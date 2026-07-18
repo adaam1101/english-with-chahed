@@ -84,29 +84,215 @@ function LessonModal({ isOpen, onClose, onSaved }) {
   );
 }
 
+function SessionModal({ isOpen, onClose, onSaved }) {
+  const [title, setTitle] = useState('');
+  const [level, setLevel] = useState('BAC');
+  const [date, setDate] = useState('');
+  const [link, setLink] = useState('https://meet.google.com/');
+  const [busy, setBusy] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from('sessions').insert({
+      title,
+      level,
+      session_date: new Date(date).toISOString(),
+      meeting_link: link
+    });
+    setBusy(false);
+    if (!error) {
+      onSaved();
+      onClose();
+      setTitle('');
+      setDate('');
+      setLink('https://meet.google.com/');
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Schedule live <i>session</i></h2>
+        <p>Schedule a new live class for your students.</p>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>Session Title
+            <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Essay introductions"/>
+          </label>
+          <label>Student Level
+            <select value={level} onChange={e => setLevel(e.target.value)}>
+              <option value="BAC">BAC (High School)</option>
+              <option value="BEM">BEM (Middle School)</option>
+            </select>
+          </label>
+          <label>Date & Time
+            <input type="datetime-local" required value={date} onChange={e => setDate(e.target.value)}/>
+          </label>
+          <label>Meeting Link
+            <input required type="url" value={link} onChange={e => setLink(e.target.value)}/>
+          </label>
+          <div className="modal-buttons">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Scheduling...' : 'Schedule Class'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SubmissionModal({ isOpen, onClose, studentId, onSaved }) {
+  const [assessment, setAssessment] = useState('Assessment #3: Reading comprehension');
+  const [link, setLink] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from('submissions').insert({
+      student_id: studentId,
+      assessment_name: assessment,
+      file_url: link,
+      status: 'Pending'
+    });
+    setBusy(false);
+    if (!error) {
+      onSaved();
+      onClose();
+      setLink('');
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Submit my <i>work</i></h2>
+        <p>Submit your homework link or drive file for evaluation.</p>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>Select Assessment
+            <select value={assessment} onChange={e => setAssessment(e.target.value)}>
+              <option value="Assessment #1: Vocabulary quiz">Assessment #1: Vocabulary quiz</option>
+              <option value="Assessment #2: Grammar review">Assessment #2: Grammar review</option>
+              <option value="Assessment #3: Reading comprehension">Assessment #3: Reading comprehension</option>
+            </select>
+          </label>
+          <label>Link to your work (Google Drive, PDF link, etc.)
+            <input required type="url" value={link} onChange={e => setLink(e.target.value)} placeholder="https://drive.google.com/..."/>
+          </label>
+          <div className="modal-buttons">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Submitting...' : 'Submit Work'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function GradeModal({ isOpen, onClose, submission, onSaved }) {
+  const [grade, setGrade] = useState('A+');
+  const [busy, setBusy] = useState(false);
+
+  if (!isOpen || !submission) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from('submissions').update({
+      grade,
+      status: 'Graded'
+    }).eq('id', submission.id);
+    setBusy(false);
+    if (!error) {
+      onSaved();
+      onClose();
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Grade <i>submission</i></h2>
+        <p>Evaluate work by <b>{submission.profiles?.full_name || 'Student'}</b> for <b>{submission.assessment_name}</b>.</p>
+        <div style={{ margin: '15px 0', fontSize: '13px' }}>
+          <span>Submitted File: </span>
+          <a href={submission.file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#b64f75', fontWeight: '600' }}>Open link ↗</a>
+        </div>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>Select Grade
+            <select value={grade} onChange={e => setGrade(e.target.value)}>
+              <option value="A+">A+</option>
+              <option value="A">A</option>
+              <option value="B+">B+</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+            </select>
+          </label>
+          <div className="modal-buttons">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Grading...' : 'Submit Grade'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TeacherDashboard({ onLogout }) {
-  const [notice, setNotice] = useState('BEM grammar workshop is this Thursday. Bring your questions!');
+  const [notice, setNotice] = useState('No announcements published yet.');
   const [draft, setDraft] = useState('');
   const [toast, setToast] = useState('');
   const [lessons, setLessons] = useState([]);
-  const [showModal, setShowModal] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [studentCount, setStudentCount] = useState(0);
+  const [toGradeCount, setToGradeCount] = useState(0);
+  const [showLessonModal, setShowLessonModal] = useState(false);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [activeSubmission, setActiveSubmission] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
 
-  const fetchLessons = async () => {
-    const { data } = await supabase.from('lessons').select('*').order('created_at', { ascending: false });
-    if (data) setLessons(data);
-  };
+  const loadDashboardData = async () => {
+    // 1. Fetch lessons
+    const { data: lessonData } = await supabase.from('lessons').select('*').order('created_at', { ascending: false });
+    if (lessonData) setLessons(lessonData);
 
-  const fetchAnnouncement = async () => {
-    const { data } = await supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (data?.content) setNotice(data.content);
+    // 2. Fetch announcement
+    const { data: annData } = await supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (annData?.content) setNotice(annData.content);
+
+    // 3. Fetch student count
+    const { count: sCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
+    setStudentCount(sCount || 0);
+
+    // 4. Fetch to grade count
+    const { count: gCount } = await supabase.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'Pending');
+    setToGradeCount(gCount || 0);
+
+    // 5. Fetch sessions
+    const { data: sessData } = await supabase.from('sessions').select('*').order('session_date', { ascending: true });
+    if (sessData) setSessions(sessData);
+
+    // 6. Fetch submissions
+    const { data: subData } = await supabase.from('submissions').select('*, profiles(full_name)').order('submitted_at', { ascending: false });
+    if (subData) setSubmissions(subData);
   };
 
   useEffect(() => {
-    fetchLessons();
-    fetchAnnouncement();
+    loadDashboardData();
   }, []);
 
   const publish = async e => {
@@ -152,7 +338,7 @@ function TeacherDashboard({ onLogout }) {
             <h1>Good morning, <i>Chaheed</i> ✦</h1>
             <p>Here’s what is happening in your classroom today.</p>
           </div>
-          <button className="create-btn" onClick={() => setShowModal(true)}>
+          <button className="create-btn" onClick={() => setShowLessonModal(true)}>
             <Icon name="plus" /> Create lesson
           </button>
         </header>
@@ -160,10 +346,10 @@ function TeacherDashboard({ onLogout }) {
           <article>
             <span className="stat-icon peach"><Icon name="users" /></span>
             <div>
-              <b>1,248</b>
+              <b>{studentCount}</b>
               <p>Active students</p>
             </div>
-            <small>+12 this week</small>
+            <small>Database synced</small>
           </article>
           <article>
             <span className="stat-icon lavender"><Icon name="book" /></span>
@@ -176,7 +362,7 @@ function TeacherDashboard({ onLogout }) {
           <article>
             <span className="stat-icon yellow"><Icon name="check" /></span>
             <div>
-              <b>36</b>
+              <b>{toGradeCount}</b>
               <p>To grade</p>
             </div>
             <small className="urgent">Due today</small>
@@ -209,23 +395,29 @@ function TeacherDashboard({ onLogout }) {
                 <p className="eyebrow"><span /> UPCOMING</p>
                 <h2>Live <i>sessions</i></h2>
               </div>
-              <button onClick={() => pop('Session scheduler opened!')} className="circle-add"><Icon name="plus" size={16} /></button>
+              <button onClick={() => setShowSessionModal(true)} className="circle-add"><Icon name="plus" size={16} /></button>
             </div>
-            <div className="schedule-item">
-              <div className="date-box"><b>18</b><small>JUL</small></div>
-              <div>
-                <b>BAC · Essay introductions</b>
-                <p>Friday · 5:00 PM · Google Meet</p>
-              </div>
-            </div>
-            <div className="schedule-item">
-              <div className="date-box purple"><b>21</b><small>JUL</small></div>
-              <div>
-                <b>BEM · Grammar workshop</b>
-                <p>Monday · 4:30 PM · Google Meet</p>
-              </div>
-            </div>
-            <button className="view-all" onClick={() => pop('Your full sessions calendar is ready.')}>View calendar <Icon name="arrow" size={15} /></button>
+            {sessions.length === 0 ? (
+              <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '11px' }}>No live sessions scheduled yet.</p>
+            ) : (
+              sessions.map(sess => {
+                const sDate = new Date(sess.session_date);
+                const day = sDate.getDate();
+                const month = sDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                const formattedTime = sDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const dayName = sDate.toLocaleString('en-US', { weekday: 'long' });
+                const catClass = sess.level === 'BAC' ? '' : 'purple';
+                return (
+                  <div className="schedule-item" key={sess.id}>
+                    <div className={`date-box ${catClass}`}><b>{day}</b><small>{month}</small></div>
+                    <div>
+                      <b>{sess.level} · {sess.title}</b>
+                      <p>{dayName} · {formattedTime} · <a href={sess.meeting_link} target="_blank" rel="noopener noreferrer" style={{ color: '#7e639f', fontWeight: '600' }}>Join Meeting</a></p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </article>
         </div>
         <section className="submissions">
@@ -234,33 +426,38 @@ function TeacherDashboard({ onLogout }) {
               <p className="eyebrow"><span /> ASSESSMENTS</p>
               <h2>Latest <i>submissions</i></h2>
             </div>
-            <button className="view-all" onClick={() => pop('Opening all submitted assessments.')}>View all <Icon name="arrow" size={15} /></button>
           </div>
-          <div className="student-row">
-            <span className="student-avatar">SR</span>
-            <b>Sarah Rahmani</b>
-            <span>Reading comprehension #3</span>
-            <small>Submitted 12 min ago</small>
-            <button onClick={() => pop('Opening Sarah’s submission for grading.')}>Review</button>
-          </div>
-          <div className="student-row">
-            <span className="student-avatar blue">AK</span>
-            <b>Amine Khelifi</b>
-            <span>Reading comprehension #3</span>
-            <small>Submitted 38 min ago</small>
-            <button onClick={() => pop('Opening Amine’s submission for grading.')}>Review</button>
-          </div>
+          {submissions.length === 0 ? (
+            <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '11px' }}>No submissions received yet.</p>
+          ) : (
+            submissions.map(sub => (
+              <div className="student-row" key={sub.id}>
+                <span className="student-avatar">{sub.profiles?.full_name?.substring(0, 2).toUpperCase() || 'ST'}</span>
+                <b>{sub.profiles?.full_name || 'Student'}</b>
+                <span>{sub.assessment_name}</span>
+                <small>{sub.status === 'Graded' ? `Graded: ${sub.grade}` : 'Pending'}</small>
+                {sub.status === 'Pending' ? (
+                  <button onClick={() => setActiveSubmission(sub)}>Review & Grade</button>
+                ) : (
+                  <button style={{ background: '#eafbe9', color: '#4da64d' }} onClick={() => window.open(sub.file_url, '_blank')}>View Link</button>
+                )}
+              </div>
+            ))
+          )}
         </section>
       </section>
-      <LessonModal isOpen={showModal} onClose={() => setShowModal(false)} onSaved={fetchLessons} />
+      <LessonModal isOpen={showLessonModal} onClose={() => setShowLessonModal(false)} onSaved={loadDashboardData} />
+      <SessionModal isOpen={showSessionModal} onClose={() => setShowSessionModal(false)} onSaved={loadDashboardData} />
+      <GradeModal isOpen={!!activeSubmission} onClose={() => setActiveSubmission(null)} submission={activeSubmission} onSaved={loadDashboardData} />
       {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
     </main>
   );
 }
 
 function Home({ onLogin }) {
-  const [notice, setNotice] = useState('🌷 Our BEM grammar workshop is this Thursday. Bring your questions — we’ll make tricky tenses feel simple.');
+  const [notice, setNotice] = useState('🌷 Welcome back! Check back later for the latest announcement.');
   const [lessons, setLessons] = useState([]);
+  const [nextSession, setNextSession] = useState(null);
   const [toast, setToast] = useState('');
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
@@ -271,6 +468,9 @@ function Home({ onLogin }) {
     });
     supabase.from('lessons').select('*').order('created_at', { ascending: false }).then(({ data }) => {
       if (data) setLessons(data);
+    });
+    supabase.from('sessions').select('*').gte('session_date', new Date().toISOString()).order('session_date', { ascending: true }).limit(1).maybeSingle().then(({ data }) => {
+      if (data) setNextSession(data);
     });
   }, []);
 
@@ -330,13 +530,25 @@ function Home({ onLogin }) {
           </article>
           <article className="session">
             <div className="label"><Icon name="calendar" size={15} /> NEXT LIVE SESSION</div>
-            <span className="level">BAC 2026</span>
-            <h3>Writing the perfect<br />essay introduction</h3>
-            <div className="session-time">
-              <div><b>18</b><span>JUL</span></div>
-              <p><b>Friday · 5:00 PM</b><br /><small>Google Meet · 60 minutes</small></p>
-            </div>
-            <button className="join" onClick={() => onLogin('student', '')}>Join session <Icon name="arrow" size={16} /></button>
+            {nextSession ? (
+              <>
+                <span className="level">{nextSession.level} 2026</span>
+                <h3>{nextSession.title}</h3>
+                <div className="session-time">
+                  <div>
+                    <b>{new Date(nextSession.session_date).getDate()}</b>
+                    <span>{new Date(nextSession.session_date).toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
+                  </div>
+                  <p>
+                    <b>{new Date(nextSession.session_date).toLocaleString('en-US', { weekday: 'long' })} · {new Date(nextSession.session_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</b>
+                    <br /><small>Google Meet</small>
+                  </p>
+                </div>
+                <button className="join" onClick={() => window.open(nextSession.meeting_link, '_blank')}>Join session <Icon name="arrow" size={16} /></button>
+              </>
+            ) : (
+              <p style={{ margin: '30px 0', fontSize: '13px', color: '#7c7379', fontStyle: 'italic' }}>No upcoming sessions scheduled yet.</p>
+            )}
           </article>
           <article className="assessment">
             <div className="label"><span className="purple-dot" /> DUE SOON</div>
@@ -393,21 +605,41 @@ function Home({ onLogin }) {
   );
 }
 
-function StudentPortal({ onLogout }) {
-  const [notice, setNotice] = useState('🌷 Our BEM grammar workshop is this Thursday. Bring your questions — we’ll make tricky tenses feel simple.');
+function StudentPortal({ onLogout, user, profile }) {
+  const [notice, setNotice] = useState('🌷 Welcome back! Check back later for announcements.');
   const [lessons, setLessons] = useState([]);
+  const [nextSession, setNextSession] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [toast, setToast] = useState('');
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2500) };
 
+  const loadStudentData = async () => {
+    // 1. Fetch announcement
+    const { data: annData } = await supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (annData?.content) setNotice(annData.content);
+
+    // 2. Fetch lessons
+    const { data: lessonData } = await supabase.from('lessons').select('*').order('created_at', { ascending: false });
+    if (lessonData) setLessons(lessonData);
+
+    // 3. Fetch next session
+    const { data: sessData } = await supabase.from('sessions').select('*').gte('session_date', new Date().toISOString()).order('session_date', { ascending: true }).limit(1).maybeSingle();
+    if (sessData) setNextSession(sessData);
+
+    // 4. Fetch user's submissions
+    if (user) {
+      const { data: subData } = await supabase.from('submissions').select('*').eq('student_id', user.id).order('submitted_at', { ascending: false });
+      if (subData) setSubmissions(subData);
+    }
+  };
+
   useEffect(() => {
-    supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
-      if (data?.content) setNotice(data.content);
-    });
-    supabase.from('lessons').select('*').order('created_at', { ascending: false }).then(({ data }) => {
-      if (data) setLessons(data);
-    });
-  }, []);
+    loadStudentData();
+  }, [user]);
+
+  const studentName = profile?.full_name || 'Student';
 
   return (
     <main className="student-page">
@@ -416,7 +648,7 @@ function StudentPortal({ onLogout }) {
         <div className="student-profile">
           <span>SA</span>
           <div>
-            <b>Salma Amrane</b>
+            <b>{studentName}</b>
             <small>BAC 2026 student</small>
           </div>
         </div>
@@ -432,19 +664,33 @@ function StudentPortal({ onLogout }) {
         <header className="student-header">
           <div>
             <p className="eyebrow"><span /> STUDENT PORTAL</p>
-            <h1>Hello, <i>Salma</i> ✦</h1>
+            <h1>Hello, <i>{studentName}</i> ✦</h1>
             <p>Your next small step is waiting for you.</p>
           </div>
           <div className="progress-ring"><b>68%</b><span>this week</span></div>
         </header>
         <section className="student-live">
-          <div>
-            <p className="eyebrow"><span /> NEXT LIVE CLASS</p>
-            <h2>Writing a perfect <i>essay introduction</i></h2>
-            <p>Friday, 18 July · 5:00 PM · 60 minutes</p>
-            <button onClick={() => pop('Your Google Meet session opens 10 minutes before class.')} className="join">Join live session <Icon name="arrow" size={16} /></button>
-          </div>
-          <div className="live-date"><b>18</b><span>JULY</span><small>FRI</small></div>
+          {nextSession ? (
+            <>
+              <div>
+                <p className="eyebrow"><span /> NEXT LIVE CLASS</p>
+                <h2>{nextSession.title}</h2>
+                <p>{new Date(nextSession.session_date).toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} · {new Date(nextSession.session_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                <button onClick={() => window.open(nextSession.meeting_link, '_blank')} className="join">Join live session <Icon name="arrow" size={16} /></button>
+              </div>
+              <div className="live-date">
+                <b>{new Date(nextSession.session_date).getDate()}</b>
+                <span>{new Date(nextSession.session_date).toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
+                <small>{nextSession.level}</small>
+              </div>
+            </>
+          ) : (
+            <div>
+              <p className="eyebrow"><span /> NEXT LIVE CLASS</p>
+              <h2>No live classes scheduled yet.</h2>
+              <p>Keep an eye out for updates from teacher Chaheed!</p>
+            </div>
+          )}
         </section>
         <div className="student-grid">
           <article className="student-announcement">
@@ -457,21 +703,45 @@ function StudentPortal({ onLogout }) {
             <div className="work-top">
               <div className="paper">A<small>+</small></div>
               <div>
-                <h2>Assessment #3</h2>
-                <p>Reading comprehension</p>
+                <h2>Submit Assessments</h2>
+                <p>Send links to your completed assignments.</p>
               </div>
             </div>
-            <p className="due">Due in <b>2 days, 4 hours</b></p>
-            <button onClick={() => pop('Submission area opened. Choose your completed file to upload.')} className="submit-work">Submit my work <Icon name="arrow" size={16} /></button>
+            <p className="due">Click below to upload a new homework file.</p>
+            <button onClick={() => setShowSubmitModal(true)} className="submit-work">Submit my work <Icon name="arrow" size={16} /></button>
           </article>
         </div>
-        <section className="continue-section">
+        <section className="continue-section" style={{ marginTop: '16px' }}>
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow"><span /> MY SUBMISSIONS</p>
+              <h2>Your graded & pending <i>assessments</i></h2>
+            </div>
+          </div>
+          {submissions.length === 0 ? (
+            <p style={{ padding: '15px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '12px' }}>You haven't submitted any assessments yet.</p>
+          ) : (
+            submissions.map(sub => (
+              <div className="student-lesson-row" key={sub.id} style={{ borderTop: '1px solid #f0eae6', marginTop: '15px', paddingTop: '12px' }}>
+                <div className="tiny-cover" style={{ background: sub.status === 'Graded' ? '#eafbe9' : '#fff0f2', color: sub.status === 'Graded' ? '#4da64d' : '#ce6887', display: 'grid', placeItems: 'center', fontStyle: 'italic' }}>
+                  {sub.status === 'Graded' ? sub.grade : '...'}
+                </div>
+                <div>
+                  <b>{sub.assessment_name}</b>
+                  <p>Submitted on {new Date(sub.submitted_at).toLocaleDateString()} · Status: <span style={{ color: sub.status === 'Graded' ? '#4da64d' : '#e68212', fontWeight: '600' }}>{sub.status}</span></p>
+                </div>
+                <button onClick={() => window.open(sub.file_url, '_blank')}><Icon name="play" size={17} /></button>
+              </div>
+            ))
+          )}
+        </section>
+        <section className="continue-section" style={{ marginTop: '16px' }}>
           <div className="panel-title">
             <div>
               <p className="eyebrow"><span /> CONTINUE LEARNING</p>
               <h2>Pick up where you <i>left off</i></h2>
             </div>
-            <button onClick={() => pop('Your full lesson library is ready.')} className="view-all">View all lessons <Icon name="arrow" size={15}/></button>
+            <button onClick={() => pop('Your full lesson library is ready.')} className="view-all">View all lessons <Icon name="arrow" size={15} /></button>
           </div>
           {lessons.length === 0 ? (
             <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '12px' }}>No lessons added yet.</p>
@@ -490,6 +760,7 @@ function StudentPortal({ onLogout }) {
           )}
         </section>
       </section>
+      <SubmissionModal isOpen={showSubmitModal} onClose={() => setShowSubmitModal(false)} studentId={user?.id} onSaved={loadStudentData} />
       {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
     </main>
   );
@@ -560,29 +831,41 @@ function RealLogin({ onBack, initialMode = 'signin', teacherEntry = false, onAut
 function App() {
   const [view, setView] = useState('home');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
 
-  const routeUser = async user => {
-    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  const routeUser = async userObj => {
+    setUser(userObj);
+    const { data } = await supabase.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
+    setProfile(data);
     setView(data?.role === 'teacher' ? 'teacher' : 'student');
   };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) routeUser(session.user);
-      setLoading(false);
+      if (session) {
+        routeUser(session.user);
+      } else {
+        setLoading(false);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         routeUser(session.user);
       } else {
+        setUser(null);
+        setProfile(null);
         setView('home');
       }
+      setLoading(false);
     });
     return () => subscription.unsubscribe();
   }, []);
 
   const logout = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
     setView('home');
   };
 
@@ -597,7 +880,7 @@ function App() {
   ) : view === 'teacher' ? (
     <TeacherDashboard onLogout={logout} />
   ) : view === 'student' ? (
-    <StudentPortal onLogout={logout} />
+    <StudentPortal onLogout={logout} user={user} profile={profile} />
   ) : (
     <Home onLogin={login} />
   );
