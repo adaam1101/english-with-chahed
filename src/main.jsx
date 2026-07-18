@@ -19,7 +19,7 @@ const Icon = ({ name, size = 18 }) => {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:paths[name]}}/>;
 };
 
-const Brand = () => <div className="brand"><span>e</span>nglish <em>with</em> chaheed<span className="dot">.</span></div>;
+const Brand = () => <div className="brand"><span>e</span>nglish <i>with</i> chaheed<span className="dot">.</span></div>;
 
 const checkRateLimit = (actionKey, cooldownSeconds = 10) => {
   const now = Date.now();
@@ -31,6 +31,16 @@ const checkRateLimit = (actionKey, cooldownSeconds = 10) => {
   }
   localStorage.setItem(`last_submit_${actionKey}`, now.toString());
   return true;
+};
+
+const getFileIcon = (nameOrUrl) => {
+  const lower = (nameOrUrl || '').toLowerCase();
+  if (lower.includes('pdf')) return '📄';
+  if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('loom.com') || lower.includes('mp4') || lower.includes('video')) return '🎥';
+  if (lower.includes('drive.google.com')) return '📁';
+  if (lower.includes('doc') || lower.includes('sheet') || lower.includes('csv') || lower.includes('ppt')) return '📊';
+  if (lower.includes('png') || lower.includes('jpg') || lower.includes('jpeg') || lower.includes('webp') || lower.includes('gif')) return '🖼️';
+  return '📎';
 };
 
 function AttachmentSelector({ value, onChange }) {
@@ -76,6 +86,8 @@ function AttachmentSelector({ value, onChange }) {
     onChange('');
   };
 
+  const fileExtIcon = getFileIcon(fileName || value);
+
   return (
     <div style={{ marginTop: '6px', marginBottom: '12px' }}>
       <div className="modal-tabs">
@@ -101,7 +113,7 @@ function AttachmentSelector({ value, onChange }) {
           ) : (
             <div className="attachment-chip">
               <div className="attachment-chip-info">
-                <span>📄</span>
+                <span>{fileExtIcon}</span>
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>
                   {fileName || value.split('/').pop()}
                 </span>
@@ -136,7 +148,7 @@ function AttachmentSelector({ value, onChange }) {
           {pastedLink && (
             <div className="attachment-chip">
               <div className="attachment-chip-info">
-                <span>🔗</span>
+                <span>{getFileIcon(pastedLink)}</span>
                 <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>
                   {pastedLink}
                 </span>
@@ -1083,18 +1095,57 @@ function StudentPortal({ onLogout, user, profile }) {
         </header>
 
         {profile && (
-          <section className="student-live" style={{ background: '#fbfcfc', border: '1.5px solid #eef2f2', marginTop: '16px' }}>
-            <div>
-              <p className="eyebrow"><span style={{ background: '#78a0a0' }} /> TUITION & PAYMENT STATUS</p>
-              <h2>Status: <span style={{ color: profile.payment_status === 'Paid' ? '#4da64d' : profile.payment_status === 'Partially Paid' ? '#e68212' : '#ce6887' }}>{profile.payment_status}</span></h2>
-              <p style={{ marginTop: '6px', fontSize: '13px' }}>
-                Paid: <b>{profile.amount_paid ?? 0} DA</b> / {profile.total_due ?? 5000} DA 
-                {profile.payment_status !== 'Paid' && ` (Remaining: ${Math.max(0, (profile.total_due ?? 5000) - (profile.amount_paid ?? 0))} DA)`}
-              </p>
+          <section className="student-live" style={{ 
+            background: 'linear-gradient(135deg, #fbfcfc, #f4f8f8)', 
+            border: '1.5px solid #eef2f2', 
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px rgba(120, 160, 160, 0.04)',
+            marginTop: '16px',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ zIndex: 1 }}>
+              <p className="eyebrow"><span style={{ background: '#78a0a0' }} /> TUITION & PAYMENT SUMMARY</p>
+              <h2 style={{ fontSize: '32px', letterSpacing: '-1.5px' }}>
+                Status: <span style={{ 
+                  color: profile.payment_status === 'Paid' ? '#4da64d' : profile.payment_status === 'Partially Paid' ? '#e68212' : '#ce6887',
+                  background: profile.payment_status === 'Paid' ? '#eafbe9' : profile.payment_status === 'Partially Paid' ? '#fff9f0' : '#fff0f2',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '20px',
+                  marginLeft: '8px',
+                  verticalAlign: 'middle',
+                  fontWeight: '700'
+                }}>{profile.payment_status}</span>
+              </h2>
+              <div style={{ marginTop: '12px', display: 'flex', gap: '20px', fontSize: '13px' }}>
+                <div>
+                  <span style={{ color: '#7a8585' }}>Paid Amount</span>
+                  <p style={{ fontSize: '16px', fontWeight: '700', margin: '4px 0 0', color: '#302a3a' }}>{profile.amount_paid ?? 0} DA</p>
+                </div>
+                <div style={{ borderLeft: '1px solid #e5eaea', paddingLeft: '20px' }}>
+                  <span style={{ color: '#7a8585' }}>Total Tuition</span>
+                  <p style={{ fontSize: '16px', fontWeight: '700', margin: '4px 0 0', color: '#302a3a' }}>{profile.total_due ?? 5000} DA</p>
+                </div>
+              </div>
             </div>
-            <div className="live-date" style={{ background: '#ecf3f3', border: '1px solid #dbe8e8', color: '#557878', display: 'grid', placeItems: 'center', height: '60px', width: '90px' }}>
-              <b style={{ fontSize: '18px' }}>{profile.payment_status === 'Paid' ? '0' : Math.max(0, (profile.total_due ?? 5000) - (profile.amount_paid ?? 0))}</b>
-              <small style={{ fontSize: '9px', textTransform: 'uppercase', color: '#557878' }}>DA Left</small>
+            <div className="live-date" style={{ 
+              background: '#ecf3f3', 
+              border: '1.5px solid #d8e6e6', 
+              color: '#496c6c', 
+              display: 'grid', 
+              placeItems: 'center', 
+              height: '84px', 
+              width: '105px',
+              borderRadius: '12px',
+              boxShadow: 'none',
+              transform: 'none',
+              zIndex: 1
+            }}>
+              <b style={{ fontSize: '24px', fontFamily: 'Fraunces, serif', letterSpacing: '-1px' }}>
+                {profile.payment_status === 'Paid' ? '0' : Math.max(0, (profile.total_due ?? 5000) - (profile.amount_paid ?? 0))}
+              </b>
+              <small style={{ fontSize: '9px', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>DA Remaining</small>
             </div>
           </section>
         )}
