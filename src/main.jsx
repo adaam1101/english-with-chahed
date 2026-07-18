@@ -262,31 +262,31 @@ function TeacherDashboard({ onLogout }) {
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
 
+  const handleNav = (tab, id) => {
+    setActiveTab(tab);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const loadDashboardData = async () => {
-    // 1. Fetch lessons
     const { data: lessonData } = await supabase.from('lessons').select('*').order('created_at', { ascending: false });
     if (lessonData) setLessons(lessonData);
 
-    // 2. Fetch announcement
     const { data: annData } = await supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (annData?.content) setNotice(annData.content);
 
-    // 3. Fetch student count
     const { count: sCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
     setStudentCount(sCount || 0);
 
-    // 4. Fetch to grade count
     const { count: gCount } = await supabase.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'Pending');
     setToGradeCount(gCount || 0);
 
-    // 5. Fetch sessions
     const { data: sessData } = await supabase.from('sessions').select('*').order('session_date', { ascending: true });
     if (sessData) setSessions(sessData);
 
-    // 6. Fetch submissions
     const { data: subData } = await supabase.from('submissions').select('*, profiles(full_name)').order('submitted_at', { ascending: false });
     if (subData) setSubmissions(subData);
   };
@@ -323,16 +323,15 @@ function TeacherDashboard({ onLogout }) {
           </div>
         </div>
         <div className="side-menu">
-          <a className="side-active">Overview</a>
-          <a>My lessons</a>
-          <a>Live sessions</a>
-          <a>Students</a>
-          <a>Assessments</a>
+          <a className={activeTab === 'overview' ? 'side-active' : ''} onClick={() => handleNav('overview', 'overview')}>Overview</a>
+          <a className={activeTab === 'lessons' ? 'side-active' : ''} onClick={() => handleNav('lessons', 'lessons')}>My lessons</a>
+          <a className={activeTab === 'live' ? 'side-active' : ''} onClick={() => handleNav('live', 'live')}>Live sessions</a>
+          <a className={activeTab === 'submissions' ? 'side-active' : ''} onClick={() => handleNav('submissions', 'submissions')}>Assessments</a>
         </div>
         <button className="logout" onClick={onLogout}>← Log out</button>
       </aside>
       <section className="teacher-main">
-        <header className="teacher-header">
+        <header className="teacher-header" id="overview">
           <div>
             <p className="eyebrow"><span /> TEACHER DASHBOARD</p>
             <h1>Good morning, <i>Chaheed</i> ✦</h1>
@@ -342,7 +341,7 @@ function TeacherDashboard({ onLogout }) {
             <Icon name="plus" /> Create lesson
           </button>
         </header>
-        <div className="teacher-stats">
+        <div className="teacher-stats" id="lessons">
           <article>
             <span className="stat-icon peach"><Icon name="users" /></span>
             <div>
@@ -368,7 +367,7 @@ function TeacherDashboard({ onLogout }) {
             <small className="urgent">Due today</small>
           </article>
         </div>
-        <div className="teacher-grid">
+        <div className="teacher-grid" id="live">
           <article className="post-panel">
             <div className="panel-title">
               <div>
@@ -420,7 +419,7 @@ function TeacherDashboard({ onLogout }) {
             )}
           </article>
         </div>
-        <section className="submissions">
+        <section className="submissions" id="submissions">
           <div className="panel-title">
             <div>
               <p className="eyebrow"><span /> ASSESSMENTS</p>
@@ -612,23 +611,25 @@ function StudentPortal({ onLogout, user, profile }) {
   const [submissions, setSubmissions] = useState([]);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [toast, setToast] = useState('');
+  const [activeTab, setActiveTab] = useState('space');
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2500) };
 
+  const handleNav = (tab, id) => {
+    setActiveTab(tab);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const loadStudentData = async () => {
-    // 1. Fetch announcement
     const { data: annData } = await supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (annData?.content) setNotice(annData.content);
 
-    // 2. Fetch lessons
     const { data: lessonData } = await supabase.from('lessons').select('*').order('created_at', { ascending: false });
     if (lessonData) setLessons(lessonData);
 
-    // 3. Fetch next session
     const { data: sessData } = await supabase.from('sessions').select('*').gte('session_date', new Date().toISOString()).order('session_date', { ascending: true }).limit(1).maybeSingle();
     if (sessData) setNextSession(sessData);
 
-    // 4. Fetch user's submissions
     if (user) {
       const { data: subData } = await supabase.from('submissions').select('*').eq('student_id', user.id).order('submitted_at', { ascending: false });
       if (subData) setSubmissions(subData);
@@ -653,15 +654,15 @@ function StudentPortal({ onLogout, user, profile }) {
           </div>
         </div>
         <div className="side-menu">
-          <a className="side-active">My space</a>
-          <a>My lessons</a>
-          <a>Live sessions</a>
-          <a>My assessments</a>
+          <a className={activeTab === 'space' ? 'side-active' : ''} onClick={() => handleNav('space', 'space')}>My space</a>
+          <a className={activeTab === 'lessons' ? 'side-active' : ''} onClick={() => handleNav('lessons', 'lessons')}>My lessons</a>
+          <a className={activeTab === 'live' ? 'side-active' : ''} onClick={() => handleNav('live', 'live')}>Live sessions</a>
+          <a className={activeTab === 'assessments' ? 'side-active' : ''} onClick={() => handleNav('assessments', 'assessments')}>My assessments</a>
         </div>
         <button className="logout" onClick={onLogout}>← Log out</button>
       </aside>
       <section className="student-main">
-        <header className="student-header">
+        <header className="student-header" id="space">
           <div>
             <p className="eyebrow"><span /> STUDENT PORTAL</p>
             <h1>Hello, <i>{studentName}</i> ✦</h1>
@@ -669,7 +670,7 @@ function StudentPortal({ onLogout, user, profile }) {
           </div>
           <div className="progress-ring"><b>68%</b><span>this week</span></div>
         </header>
-        <section className="student-live">
+        <section className="student-live" id="live">
           {nextSession ? (
             <>
               <div>
@@ -692,7 +693,7 @@ function StudentPortal({ onLogout, user, profile }) {
             </div>
           )}
         </section>
-        <div className="student-grid">
+        <div className="student-grid" id="assessments">
           <article className="student-announcement">
             <p className="eyebrow"><span /> FROM CHAHEED</p>
             <h2>{notice}</h2>
@@ -735,7 +736,7 @@ function StudentPortal({ onLogout, user, profile }) {
             ))
           )}
         </section>
-        <section className="continue-section" style={{ marginTop: '16px' }}>
+        <section className="continue-section" id="lessons" style={{ marginTop: '16px' }}>
           <div className="panel-title">
             <div>
               <p className="eyebrow"><span /> CONTINUE LEARNING</p>
