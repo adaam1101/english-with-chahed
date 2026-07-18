@@ -346,10 +346,18 @@ function GradeModal({ isOpen, onClose, submission, onSaved }) {
 
 function EditStudentModal({ isOpen, onClose, student, onSaved }) {
   const [name, setName] = useState('');
+  const [totalDue, setTotalDue] = useState(5000);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [status, setStatus] = useState('Unpaid');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (student) setName(student.full_name || '');
+    if (student) {
+      setName(student.full_name || '');
+      setTotalDue(student.total_due ?? 5000);
+      setAmountPaid(student.amount_paid ?? 0);
+      setStatus(student.payment_status || 'Unpaid');
+    }
   }, [student]);
 
   if (!isOpen || !student) return null;
@@ -358,7 +366,10 @@ function EditStudentModal({ isOpen, onClose, student, onSaved }) {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.from('profiles').update({
-      full_name: name
+      full_name: name,
+      total_due: parseInt(totalDue) || 0,
+      amount_paid: parseInt(amountPaid) || 0,
+      payment_status: status
     }).eq('id', student.id);
     setBusy(false);
     if (!error) {
@@ -372,11 +383,24 @@ function EditStudentModal({ isOpen, onClose, student, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <h2>Edit Student <i>Name</i></h2>
-        <p>Update full name for the student profile.</p>
+        <h2>Edit Student <i>Profile</i></h2>
+        <p>Update full name and payment tracking for this student.</p>
         <form className="modal-form" onSubmit={handleSubmit}>
           <label>Full Name
             <input required value={name} onChange={e => setName(e.target.value)}/>
+          </label>
+          <label>Total Tuition Due (DA)
+            <input type="number" required value={totalDue} onChange={e => setTotalDue(e.target.value)}/>
+          </label>
+          <label>Amount Paid (DA)
+            <input type="number" required value={amountPaid} onChange={e => setAmountPaid(e.target.value)}/>
+          </label>
+          <label>Payment Status
+            <select value={status} onChange={e => setStatus(e.target.value)}>
+              <option value="Unpaid">Unpaid</option>
+              <option value="Partially Paid">Partially Paid</option>
+              <option value="Paid">Paid</option>
+            </select>
           </label>
           <div className="modal-buttons">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
@@ -613,17 +637,35 @@ function TeacherDashboard({ onLogout }) {
           {students.length === 0 ? (
             <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '11px' }}>No students registered yet.</p>
           ) : (
-            students.map(st => (
-              <div className="student-row" key={st.id} style={{ gridTemplateColumns: '36px 2fr 1fr auto' }}>
-                <span className="student-avatar">{st.full_name?.substring(0, 2).toUpperCase() || 'ST'}</span>
-                <b>{st.full_name || 'Anonymous Student'}</b>
-                <small>Joined {new Date(st.created_at).toLocaleDateString()}</small>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setEditingStudent(st)} style={{ background: '#f0ebfb', color: '#725a98' }}>Edit</button>
-                  <button onClick={() => handleRemoveStudent(st.id)} style={{ background: '#fff0f2', color: '#ce6887' }}>Remove</button>
+            students.map(st => {
+              const remaining = Math.max(0, (st.total_due || 0) - (st.amount_paid || 0));
+              const statusColor = st.payment_status === 'Paid' ? '#4da64d' : st.payment_status === 'Partially Paid' ? '#e68212' : '#ce6887';
+              return (
+                <div className="student-row" key={st.id} style={{ gridTemplateColumns: '36px 1.5fr 1fr 1fr 1fr auto' }}>
+                  <span className="student-avatar">{st.full_name?.substring(0, 2).toUpperCase() || 'ST'}</span>
+                  <div>
+                    <b>{st.full_name || 'Anonymous Student'}</b>
+                    <p style={{ margin: '2px 0 0', fontSize: '9px', color: '#7c7379' }}>Joined {new Date(st.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <small style={{ color: '#7c7379' }}>Paid</small>
+                    <p style={{ fontSize: '12px', fontWeight: '600', margin: '2px 0 0' }}>{st.amount_paid ?? 0} DA</p>
+                  </div>
+                  <div>
+                    <small style={{ color: '#7c7379' }}>Remaining</small>
+                    <p style={{ fontSize: '12px', fontWeight: '600', margin: '2px 0 0', color: remaining > 0 ? '#ad5974' : '#7c7379' }}>{remaining} DA</p>
+                  </div>
+                  <div>
+                    <small style={{ color: '#7c7379' }}>Status</small>
+                    <p style={{ fontSize: '11px', fontWeight: '700', margin: '2px 0 0', color: statusColor }}>{st.payment_status}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setEditingStudent(st)} style={{ background: '#f0ebfb', color: '#725a98' }}>Edit</button>
+                    <button onClick={() => handleRemoveStudent(st.id)} style={{ background: '#fff0f2', color: '#ce6887' }}>Remove</button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </section>
 
@@ -922,7 +964,25 @@ function StudentPortal({ onLogout, user, profile }) {
           </div>
           <div className="progress-ring"><b>68%</b><span>this week</span></div>
         </header>
-        <section className="student-live" id="live">
+
+        {profile && (
+          <section className="student-live" style={{ background: '#fbfcfc', border: '1.5px solid #eef2f2', marginTop: '16px' }}>
+            <div>
+              <p className="eyebrow"><span style={{ background: '#78a0a0' }} /> TUITION & PAYMENT STATUS</p>
+              <h2>Status: <span style={{ color: profile.payment_status === 'Paid' ? '#4da64d' : profile.payment_status === 'Partially Paid' ? '#e68212' : '#ce6887' }}>{profile.payment_status}</span></h2>
+              <p style={{ marginTop: '6px', fontSize: '13px' }}>
+                Paid: <b>{profile.amount_paid ?? 0} DA</b> / {profile.total_due ?? 5000} DA 
+                {profile.payment_status !== 'Paid' && ` (Remaining: ${Math.max(0, (profile.total_due ?? 5000) - (profile.amount_paid ?? 0))} DA)`}
+              </p>
+            </div>
+            <div className="live-date" style={{ background: '#ecf3f3', border: '1px solid #dbe8e8', color: '#557878', display: 'grid', placeItems: 'center', height: '60px', width: '90px' }}>
+              <b style={{ fontSize: '18px' }}>{profile.payment_status === 'Paid' ? '0' : Math.max(0, (profile.total_due ?? 5000) - (profile.amount_paid ?? 0))}</b>
+              <small style={{ fontSize: '9px', textTransform: 'uppercase', color: '#557878' }}>DA Left</small>
+            </div>
+          </section>
+        )}
+
+        <section className="student-live" id="live" style={{ marginTop: '20px' }}>
           {nextSession ? (
             <>
               <div>
