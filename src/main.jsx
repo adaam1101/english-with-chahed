@@ -21,6 +21,18 @@ const Icon = ({ name, size = 18 }) => {
 
 const Brand = () => <div className="brand"><span>e</span>nglish <em>with</em> chaheed<span className="dot">.</span></div>;
 
+const checkRateLimit = (actionKey, cooldownSeconds = 10) => {
+  const now = Date.now();
+  const last = localStorage.getItem(`last_submit_${actionKey}`);
+  if (last && now - parseInt(last) < cooldownSeconds * 1000) {
+    const waitTime = Math.ceil((cooldownSeconds * 1000 - (now - parseInt(last))) / 1000);
+    alert(`Please wait ${waitTime} seconds before submitting again.`);
+    return false;
+  }
+  localStorage.setItem(`last_submit_${actionKey}`, now.toString());
+  return true;
+};
+
 function LessonModal({ isOpen, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [level, setLevel] = useState('BAC');
@@ -33,6 +45,7 @@ function LessonModal({ isOpen, onClose, onSaved }) {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!checkRateLimit('lesson', 5)) return;
     setBusy(true);
     const { error } = await supabase.from('lessons').insert({
       title,
@@ -101,6 +114,7 @@ function SessionModal({ isOpen, onClose, onSaved }) {
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!checkRateLimit('session', 5)) return;
     setBusy(true);
     const { error } = await supabase.from('sessions').insert({
       title,
@@ -155,17 +169,20 @@ function AssessmentModal({ isOpen, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [fileUrl, setFileUrl] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async e => {
     e.preventDefault();
+    if (!checkRateLimit('assessment', 5)) return;
     setBusy(true);
     const { error } = await supabase.from('assessments').insert({
       title,
       description: description || null,
-      deadline: new Date(deadline).toISOString()
+      deadline: new Date(deadline).toISOString(),
+      file_url: fileUrl || null
     });
     setBusy(false);
     if (!error) {
@@ -174,6 +191,7 @@ function AssessmentModal({ isOpen, onClose, onSaved }) {
       setTitle('');
       setDescription('');
       setDeadline('');
+      setFileUrl('');
     } else {
       alert(error.message);
     }
@@ -193,6 +211,9 @@ function AssessmentModal({ isOpen, onClose, onSaved }) {
           </label>
           <label>Deadline Date & Time
             <input type="datetime-local" required value={deadline} onChange={e => setDeadline(e.target.value)}/>
+          </label>
+          <label>Materials Link (PDF, worksheet, etc. - Optional)
+            <input type="url" value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..."/>
           </label>
           <div className="modal-buttons">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
@@ -223,6 +244,7 @@ function SubmissionModal({ isOpen, onClose, studentId, assessments, onSaved }) {
       alert('No active assessment selected.');
       return;
     }
+    if (!checkRateLimit('submission', 10)) return;
     setBusy(true);
     const { error } = await supabase.from('submissions').insert({
       student_id: studentId,
@@ -425,6 +447,7 @@ function TeacherDashboard({ onLogout }) {
 
   const publish = async e => {
     e.preventDefault();
+    if (!checkRateLimit('announcement', 10)) return;
     if (draft.trim()) {
       setBusy(true);
       const { error } = await supabase.from('announcements').insert({ content: draft });
@@ -937,6 +960,11 @@ function StudentPortal({ onLogout, user, profile }) {
                   <div>
                     <h2>{nextAssessment.title}</h2>
                     <p>{nextAssessment.description || 'Instructions inside modal'}</p>
+                    {nextAssessment.file_url && (
+                      <p style={{ marginTop: '8px', fontSize: '11px' }}>
+                        <a href={nextAssessment.file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#765c98', fontWeight: '700', textDecoration: 'none' }}>📎 Download Materials / Instructions</a>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <p className="due" style={{ color: '#ad5974', fontWeight: '600' }}>
@@ -1088,9 +1116,15 @@ function App() {
 
   const routeUser = async userObj => {
     setUser(userObj);
-    const { data } = await supabase.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
-    setProfile(data);
-    setView(data?.role === 'teacher' ? 'teacher' : 'student');
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userObj.id).maybeSingle();
+      setProfile(data);
+      setView(data?.role === 'teacher' ? 'teacher' : 'student');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -1108,8 +1142,8 @@ function App() {
         setUser(null);
         setProfile(null);
         setView('home');
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => subscription.unsubscribe();
   }, []);
