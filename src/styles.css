@@ -96,3 +96,110 @@ body{font-size:17px!important}.navlinks a,.sign-in{font-size:14px!important}.her
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* Custom Dropzone / Upload / Modal Tabs Styles */
+.modal-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eee7e2;
+  padding-bottom: 8px;
+}
+.modal-tab-btn {
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8c7f8a;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.modal-tab-btn.active {
+  background: #f2ecfa;
+  color: #725a98;
+}
+.upload-dropzone {
+  border: 2px dashed #e2dad4;
+  border-radius: 8px;
+  background: #fdfbf9;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 6px;
+  display: grid;
+  place-items: center;
+}
+.upload-dropzone:hover {
+  border-color: #725a98;
+  background: #f8f5fd;
+}
+.upload-dropzone p {
+  margin: 8px 0 0 0 !important;
+  font-size: 12px !important;
+  color: #7c7379 !important;
+}
+.upload-dropzone svg {
+  color: #9d909c;
+  transition: transform 0.25s ease;
+}
+.upload-dropzone:hover svg {
+  transform: translateY(-3px) scale(1.08);
+  color: #725a98;
+}
+.upload-progress-container {
+  width: 100%;
+  margin-top: 12px;
+}
+.upload-progress-bar {
+  height: 6px;
+  background: #eee6e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.upload-progress-bar span {
+  display: block;
+  height: 100%;
+  background: #725a98;
+  transition: width 0.15s ease;
+}
+.upload-progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8c7f8a;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f2ecfa;
+  border: 1px solid #ded4f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  animation: toast-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.attachment-chip-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #634d80;
+}
+.attachment-chip-remove {
+  background: none;
+  color: #a496bd;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0 4px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.attachment-chip-remove:hover {
+  color: #d6597a;
+}
+

@@ -33,6 +33,123 @@ const checkRateLimit = (actionKey, cooldownSeconds = 10) => {
   return true;
 };
 
+function AttachmentSelector({ value, onChange }) {
+  const [tab, setTab] = useState('upload');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [pastedLink, setPastedLink] = useState(value || '');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFileName(file.name);
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setUploading(false);
+            const mockUrl = `https://storage.googleapis.com/english-with-chahed/uploads/${Date.now()}_${file.name}`;
+            onChange(mockUrl);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 100);
+    }
+  };
+
+  const handleLinkChange = (e) => {
+    const link = e.target.value;
+    setPastedLink(link);
+    onChange(link);
+  };
+
+  const clearAttachment = () => {
+    setFileName('');
+    setUploadProgress(0);
+    setUploading(false);
+    setPastedLink('');
+    onChange('');
+  };
+
+  return (
+    <div style={{ marginTop: '6px', marginBottom: '12px' }}>
+      <div className="modal-tabs">
+        <button type="button" className={`modal-tab-btn ${tab === 'upload' ? 'active' : ''}`} onClick={() => setTab('upload')}>
+          📁 Upload File
+        </button>
+        <button type="button" className={`modal-tab-btn ${tab === 'link' ? 'active' : ''}`} onClick={() => setTab('link')}>
+          🔗 Paste Link
+        </button>
+      </div>
+
+      {tab === 'upload' ? (
+        <div>
+          {!fileName && !value ? (
+            <label className="upload-dropzone" style={{ margin: 0 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              <p>Drag & drop or <b>browse</b> your device</p>
+              <small style={{ fontSize: '9px', color: '#a2959e', display: 'block', marginTop: '4px' }}>PDF, slides, or worksheets (Max 15MB)</small>
+              <input type="file" onChange={handleFileChange} style={{ display: 'none' }} />
+            </label>
+          ) : (
+            <div className="attachment-chip">
+              <div className="attachment-chip-info">
+                <span>📄</span>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                  {fileName || value.split('/').pop()}
+                </span>
+              </div>
+              {!uploading && (
+                <button type="button" className="attachment-chip-remove" onClick={clearAttachment}>×</button>
+              )}
+            </div>
+          )}
+
+          {uploading && (
+            <div className="upload-progress-container">
+              <div className="upload-progress-bar">
+                <span style={{ width: `${uploadProgress}%` }}></span>
+              </div>
+              <div className="upload-progress-text">
+                <span>Uploading {fileName}...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <input 
+            type="url" 
+            value={pastedLink} 
+            onChange={handleLinkChange} 
+            placeholder="https://drive.google.com/..." 
+            style={{ width: '100%', padding: '10px 12px', fontSize: '13px' }}
+          />
+          {pastedLink && (
+            <div className="attachment-chip">
+              <div className="attachment-chip-info">
+                <span>🔗</span>
+                <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                  {pastedLink}
+                </span>
+              </div>
+              <button type="button" className="attachment-chip-remove" onClick={clearAttachment}>×</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LessonModal({ isOpen, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [level, setLevel] = useState('BAC');
@@ -90,8 +207,8 @@ function LessonModal({ isOpen, onClose, onSaved }) {
           <label>Duration (Minutes)
             <input type="number" required value={duration} onChange={e => setDuration(e.target.value)} min="1"/>
           </label>
-          <label>Materials Link (PDF, Slides, Drive, Video link)
-            <input type="url" value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..."/>
+          <label>Lesson Material File / Link
+            <AttachmentSelector value={fileUrl} onChange={setFileUrl} />
           </label>
           <div className="modal-buttons">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
@@ -212,8 +329,8 @@ function AssessmentModal({ isOpen, onClose, onSaved }) {
           <label>Deadline Date & Time
             <input type="datetime-local" required value={deadline} onChange={e => setDeadline(e.target.value)}/>
           </label>
-          <label>Materials Link (PDF, worksheet, etc. - Optional)
-            <input type="url" value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..."/>
+          <label>Assessment Material File / Link
+            <AttachmentSelector value={fileUrl} onChange={setFileUrl} />
           </label>
           <div className="modal-buttons">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
