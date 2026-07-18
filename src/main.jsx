@@ -5,31 +5,602 @@ import { supabase } from './supabase';
 import './styles.css';
 
 const Icon = ({ name, size = 18 }) => {
-  const paths = { book:'<path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v16H5.5A2.5 2.5 0 0 0 3 21zM21 5.5A2.5 2.5 0 0 0 18.5 3H13v16h5.5a2.5 2.5 0 0 1 2.5 2z"/>', calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>', arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>', play:'<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/>', bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>', check:'<path d="m5 12 4 4L19 6"/>', clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>', plus:'<path d="M12 5v14M5 12h14"/>' };
+  const paths = { 
+    book: '<path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v16H5.5A2.5 2.5 0 0 0 3 21zM21 5.5A2.5 2.5 0 0 0 18.5 3H13v16h5.5a2.5 2.5 0 0 1 2.5 2z"/>', 
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>', 
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>', 
+    play: '<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/>', 
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>', 
+    check: '<path d="m5 12 4 4L19 6"/>', 
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>', 
+    plus: '<path d="M12 5v14M5 12h14"/>' 
+  };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:paths[name]}}/>;
 };
-const Brand=()=> <div className="brand"><span>e</span>nglish <em>with</em> chaheed<span className="dot">.</span></div>;
 
-function Login({ onLogin, onBack, defaultRole = 'student' }) {
- const [role,setRole]=useState(defaultRole); const [email,setEmail]=useState(''); const submit=e=>{e.preventDefault();onLogin(role,email)};
- return <main className="login-page"><button className="back-home" onClick={onBack}>← Back to home</button><div className="login-art"><Brand/><span className="login-spark spark-one">✦</span><span className="login-spark spark-two">✧</span><span className="login-spark spark-three">★</span><div className="quote-mark">“</div><h1>Small steps.<br/><i>Brave</i> voices.</h1><p>A happy place to learn English, one confident sentence at a time.</p><div className="art-circle">ABC<br/><small>YOU CAN DO IT!</small></div></div><section className="login-card"><p className="eyebrow"><span/> WELCOME BACK</p><h2>Let’s sign you <i>in</i></h2><p className="login-sub">Choose your space to continue learning or teaching.</p><div className="role-switch"><button className={role==='student'?'chosen':''} onClick={()=>setRole('student')}><Icon name="book"/>Student</button><button className={role==='teacher'?'chosen':''} onClick={()=>setRole('teacher')}><Icon name="users"/>Teacher</button></div><form onSubmit={submit}><label>Email address<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="hello@example.com"/></label><label>Password<input required type="password" placeholder="••••••••"/></label><div className="form-row"><label className="remember"><input type="checkbox"/> Remember me</label><a>Forgot password?</a></div><button className="login-submit">Sign in to my {role} space <Icon name="arrow"/></button></form><p className="new-account">New here? <a onClick={()=>onLogin(role,'new.student@example.com')}>Create an account</a></p><small className="demo-note">Demo: any email and password will open the selected space.</small></section></main>
+const Brand = () => <div className="brand"><span>e</span>nglish <em>with</em> chaheed<span className="dot">.</span></div>;
+
+function LessonModal({ isOpen, onClose, onSaved }) {
+  const [title, setTitle] = useState('');
+  const [level, setLevel] = useState('BAC');
+  const [category, setCategory] = useState('VOCABULARY');
+  const [duration, setDuration] = useState(15);
+  const [busy, setBusy] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from('lessons').insert({
+      title,
+      level,
+      category,
+      duration_minutes: parseInt(duration) || 10
+    });
+    setBusy(false);
+    if (!error) {
+      onSaved();
+      onClose();
+      setTitle('');
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Create a new <i>lesson</i></h2>
+        <p>Fill in the details below to add a new lesson for your students.</p>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>Lesson Title
+            <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Expressing opinions like a native"/>
+          </label>
+          <label>Student Level
+            <select value={level} onChange={e => setLevel(e.target.value)}>
+              <option value="BAC">BAC (High School)</option>
+              <option value="BEM">BEM (Middle School)</option>
+            </select>
+          </label>
+          <label>Lesson Category
+            <select value={category} onChange={e => setCategory(e.target.value)}>
+              <option value="VOCABULARY">Vocabulary</option>
+              <option value="GRAMMAR">Grammar</option>
+              <option value="WRITING">Writing</option>
+            </select>
+          </label>
+          <label>Duration (Minutes)
+            <input type="number" required value={duration} onChange={e => setDuration(e.target.value)} min="1"/>
+          </label>
+          <div className="modal-buttons">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Saving...' : 'Add Lesson'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-function TeacherDashboard({ onLogout }){
- const [notice,setNotice]=useState('BEM grammar workshop is this Thursday. Bring your questions!'); const [draft,setDraft]=useState(''); const [toast,setToast]=useState(''); const pop=m=>{setToast(m);setTimeout(()=>setToast(''),2200)};
- const publish=e=>{e.preventDefault();if(draft.trim()){setNotice(draft);setDraft('');pop('Announcement published for all students.')}};
- return <main className="teacher-page"><aside className="teacher-sidebar"><Brand/><div className="teacher-chip"><span>CC</span><div><b>Chaheed</b><small>English teacher</small></div></div><div className="side-menu"><a className="side-active">Overview</a><a>My lessons</a><a>Live sessions</a><a>Students</a><a>Assessments</a></div><button className="logout" onClick={onLogout}>← Log out</button></aside><section className="teacher-main"><header className="teacher-header"><div><p className="eyebrow"><span/> TEACHER DASHBOARD</p><h1>Good morning, <i>Chaheed</i> ✦</h1><p>Here’s what is happening in your classroom today.</p></div><button className="create-btn" onClick={()=>pop('New lesson editor opened!')}><Icon name="plus"/> Create lesson</button></header><div className="teacher-stats"><article><span className="stat-icon peach"><Icon name="users"/></span><div><b>1,248</b><p>Active students</p></div><small>+12 this week</small></article><article><span className="stat-icon lavender"><Icon name="book"/></span><div><b>24</b><p>Published lessons</p></div><small>3 drafts</small></article><article><span className="stat-icon yellow"><Icon name="check"/></span><div><b>36</b><p>To grade</p></div><small className="urgent">Due today</small></article></div><div className="teacher-grid"><article className="post-panel"><div className="panel-title"><div><p className="eyebrow"><span/> SHARE WITH STUDENTS</p><h2>Post an <i>announcement</i></h2></div><span className="pin">✦</span></div><form onSubmit={publish}><textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Write a warm update for your students…"/><div><button className="publish">Publish now <Icon name="arrow" size={16}/></button></div></form><div className="last-post"><span>LAST POST</span><p>{notice}</p><small>Visible to BAC & BEM students</small></div></article><article className="schedule-panel"><div className="panel-title"><div><p className="eyebrow"><span/> UPCOMING</p><h2>Live <i>sessions</i></h2></div><button onClick={()=>pop('Session scheduler opened!')} className="circle-add"><Icon name="plus" size={16}/></button></div><div className="schedule-item"><div className="date-box"><b>18</b><small>JUL</small></div><div><b>BAC · Essay introductions</b><p>Friday · 5:00 PM · Google Meet</p></div></div><div className="schedule-item"><div className="date-box purple"><b>21</b><small>JUL</small></div><div><b>BEM · Grammar workshop</b><p>Monday · 4:30 PM · Google Meet</p></div></div><button className="view-all" onClick={()=>pop('Your full sessions calendar is ready.')}>View calendar <Icon name="arrow" size={15}/></button></article></div><section className="submissions"><div className="panel-title"><div><p className="eyebrow"><span/> ASSESSMENTS</p><h2>Latest <i>submissions</i></h2></div><button className="view-all" onClick={()=>pop('Opening all submitted assessments.')}>View all <Icon name="arrow" size={15}/></button></div><div className="student-row"><span className="student-avatar">SR</span><b>Sarah Rahmani</b><span>Reading comprehension #3</span><small>Submitted 12 min ago</small><button onClick={()=>pop('Opening Sarah’s submission for grading.')}>Review</button></div><div className="student-row"><span className="student-avatar blue">AK</span><b>Amine Khelifi</b><span>Reading comprehension #3</span><small>Submitted 38 min ago</small><button onClick={()=>pop('Opening Amine’s submission for grading.')}>Review</button></div></section></section>{toast&&<div className="toast"><Icon name="check" size={17}/>{toast}</div>}</main>
+function TeacherDashboard({ onLogout }) {
+  const [notice, setNotice] = useState('BEM grammar workshop is this Thursday. Bring your questions!');
+  const [draft, setDraft] = useState('');
+  const [toast, setToast] = useState('');
+  const [lessons, setLessons] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
+
+  const fetchLessons = async () => {
+    const { data } = await supabase.from('lessons').select('*').order('created_at', { ascending: false });
+    if (data) setLessons(data);
+  };
+
+  const fetchAnnouncement = async () => {
+    const { data } = await supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (data?.content) setNotice(data.content);
+  };
+
+  useEffect(() => {
+    fetchLessons();
+    fetchAnnouncement();
+  }, []);
+
+  const publish = async e => {
+    e.preventDefault();
+    if (draft.trim()) {
+      setBusy(true);
+      const { error } = await supabase.from('announcements').insert({ content: draft });
+      setBusy(false);
+      if (!error) {
+        setNotice(draft);
+        setDraft('');
+        pop('Announcement published for all students.');
+      } else {
+        pop('Error: ' + error.message);
+      }
+    }
+  };
+
+  return (
+    <main className="teacher-page">
+      <aside className="teacher-sidebar">
+        <Brand />
+        <div className="teacher-chip">
+          <span>CC</span>
+          <div>
+            <b>Chaheed</b>
+            <small>English teacher</small>
+          </div>
+        </div>
+        <div className="side-menu">
+          <a className="side-active">Overview</a>
+          <a>My lessons</a>
+          <a>Live sessions</a>
+          <a>Students</a>
+          <a>Assessments</a>
+        </div>
+        <button className="logout" onClick={onLogout}>← Log out</button>
+      </aside>
+      <section className="teacher-main">
+        <header className="teacher-header">
+          <div>
+            <p className="eyebrow"><span /> TEACHER DASHBOARD</p>
+            <h1>Good morning, <i>Chaheed</i> ✦</h1>
+            <p>Here’s what is happening in your classroom today.</p>
+          </div>
+          <button className="create-btn" onClick={() => setShowModal(true)}>
+            <Icon name="plus" /> Create lesson
+          </button>
+        </header>
+        <div className="teacher-stats">
+          <article>
+            <span className="stat-icon peach"><Icon name="users" /></span>
+            <div>
+              <b>1,248</b>
+              <p>Active students</p>
+            </div>
+            <small>+12 this week</small>
+          </article>
+          <article>
+            <span className="stat-icon lavender"><Icon name="book" /></span>
+            <div>
+              <b>{lessons.length}</b>
+              <p>Published lessons</p>
+            </div>
+            <small>Database synced</small>
+          </article>
+          <article>
+            <span className="stat-icon yellow"><Icon name="check" /></span>
+            <div>
+              <b>36</b>
+              <p>To grade</p>
+            </div>
+            <small className="urgent">Due today</small>
+          </article>
+        </div>
+        <div className="teacher-grid">
+          <article className="post-panel">
+            <div className="panel-title">
+              <div>
+                <p className="eyebrow"><span /> SHARE WITH STUDENTS</p>
+                <h2>Post an <i>announcement</i></h2>
+              </div>
+              <span className="pin">✦</span>
+            </div>
+            <form onSubmit={publish}>
+              <textarea value={draft} onChange={e => setDraft(e.target.value)} placeholder="Write a warm update for your students…" />
+              <div>
+                <button disabled={busy} className="publish">{busy ? 'Publishing...' : 'Publish now'} <Icon name="arrow" size={16} /></button>
+              </div>
+            </form>
+            <div className="last-post">
+              <span>LAST POST</span>
+              <p>{notice}</p>
+              <small>Visible to BAC & BEM students</small>
+            </div>
+          </article>
+          <article className="schedule-panel">
+            <div className="panel-title">
+              <div>
+                <p className="eyebrow"><span /> UPCOMING</p>
+                <h2>Live <i>sessions</i></h2>
+              </div>
+              <button onClick={() => pop('Session scheduler opened!')} className="circle-add"><Icon name="plus" size={16} /></button>
+            </div>
+            <div className="schedule-item">
+              <div className="date-box"><b>18</b><small>JUL</small></div>
+              <div>
+                <b>BAC · Essay introductions</b>
+                <p>Friday · 5:00 PM · Google Meet</p>
+              </div>
+            </div>
+            <div className="schedule-item">
+              <div className="date-box purple"><b>21</b><small>JUL</small></div>
+              <div>
+                <b>BEM · Grammar workshop</b>
+                <p>Monday · 4:30 PM · Google Meet</p>
+              </div>
+            </div>
+            <button className="view-all" onClick={() => pop('Your full sessions calendar is ready.')}>View calendar <Icon name="arrow" size={15} /></button>
+          </article>
+        </div>
+        <section className="submissions">
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow"><span /> ASSESSMENTS</p>
+              <h2>Latest <i>submissions</i></h2>
+            </div>
+            <button className="view-all" onClick={() => pop('Opening all submitted assessments.')}>View all <Icon name="arrow" size={15} /></button>
+          </div>
+          <div className="student-row">
+            <span className="student-avatar">SR</span>
+            <b>Sarah Rahmani</b>
+            <span>Reading comprehension #3</span>
+            <small>Submitted 12 min ago</small>
+            <button onClick={() => pop('Opening Sarah’s submission for grading.')}>Review</button>
+          </div>
+          <div className="student-row">
+            <span className="student-avatar blue">AK</span>
+            <b>Amine Khelifi</b>
+            <span>Reading comprehension #3</span>
+            <small>Submitted 38 min ago</small>
+            <button onClick={() => pop('Opening Amine’s submission for grading.')}>Review</button>
+          </div>
+        </section>
+      </section>
+      <LessonModal isOpen={showModal} onClose={() => setShowModal(false)} onSaved={fetchLessons} />
+      {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
+    </main>
+  );
 }
 
-function Home({onLogin}){const [toast,setToast]=useState('');const pop=m=>{setToast(m);setTimeout(()=>setToast(''),2200)};return <main><nav><Brand/><div className="navlinks"><a>Home</a><a href="#lessons">Lessons</a><a href="#sessions">Live sessions</a></div><button className="sign-in" onClick={()=>onLogin('student','')}>Student sign in <Icon name="arrow" size={16}/></button></nav><section className="hero"><div className="hero-copy"><p className="eyebrow"><span/> YOUR ENGLISH JOURNEY STARTS HERE</p><div className="doodle-arrow">dream big ↗</div><h1>Speak it.<br/><i>Own</i> it. <span>☆</span></h1><p className="type-line">Let’s make English feel <TextType text={['easy & exciting.','confident & clear.','uniquely yours.']} textColors={['#cf6285','#7654bb','#e27855']}/></p><p className="intro">A bright, supportive space for BEM & BAC students to learn, grow, and shine in English.</p><div className="hero-actions"><button className="primary" onClick={()=>onLogin('student','')}>Enter student space <Icon name="arrow"/></button><button className="textbutton" onClick={()=>onLogin('teacher','')}>I’m a teacher</button></div></div><div className="hero-art"><div className="blob pink"/><div className="blob lavender"/><div className="sticker sticker-heart">♡</div><div className="sticker sticker-star">✦</div><div className="english-card"><div className="card-top"><span>ENGLISH CLASS</span><span>♡</span></div><h3>Future<br/><i>fluent</i><br/>speaker.</h3><div className="girl"><div className="hair"/><div className="face">• ◡ •</div><div className="body"/></div><p>one lesson at a time</p></div><div className="floating-note"><span>✦</span><b>You’ve got this!</b></div></div></section><section className="dashboard" id="sessions"><div className="dash-head"><div><p className="eyebrow"><span/> A PEEK INSIDE</p><h2>Your learning <i>home</i></h2></div></div><div className="cards"><article className="announce"><div className="label"><span className="pinkdot"/> LATEST ANNOUNCEMENT</div><h3>🌷 A little reminder, lovely learners!</h3><p>Our BEM grammar workshop is this Thursday. Bring your questions — we’ll make tricky tenses feel simple.</p><small>Posted today at 9:30 AM</small></article><article className="session"><div className="label"><Icon name="calendar" size={15}/> NEXT LIVE SESSION</div><span className="level">BAC 2026</span><h3>Writing the perfect<br/>essay introduction</h3><div className="session-time"><div><b>18</b><span>JUL</span></div><p><b>Friday · 5:00 PM</b><br/><small>Google Meet · 60 minutes</small></p></div><button className="join" onClick={()=>onLogin('student','')}>Join session <Icon name="arrow" size={16}/></button></article><article className="assessment"><div className="label"><span className="purple-dot"/> DUE SOON</div><div className="assess-title"><div className="paper">A<small>+</small></div><div><h3>Assessment #3</h3><p>Reading comprehension</p></div></div><div className="deadline"><Icon name="clock" size={16}/><span>Due in <b>2 days, 4 hours</b></span></div><button className="submit" onClick={()=>pop('Sign in to submit your work.')}>Submit my work <Icon name="arrow" size={16}/></button></article></div></section><section className="lessons" id="lessons"><div className="lessons-title"><p className="eyebrow"><span/> LEARN AT YOUR PACE</p><h2>Pick up where you <i>left off</i></h2></div><div className="lesson-grid">{[['vocab','BAC · VOCABULARY','Expressing opinions like a native'],['grammar','BEM · GRAMMAR','Making tenses make sense'],['writing','BAC · WRITING','How to structure an essay']].map((x,i)=><article key={x[0]}><div className={`lesson-image ${x[0]}`}><span>0{i+1}</span><b>{i===0?'WORD POWER':i===1?'GRAMMAR GLOW UP':'WRITE WITH ME'}</b><em>{i===0?'say it loud':i===1?'you got this':'your voice matters'}</em></div><p className="course">{x[1]}</p><h3>{x[2]}</h3><div className="lesson-foot"><span>{12+i*3} min · Video lesson</span><button onClick={()=>onLogin('student','')}><Icon name="play" size={16}/></button></div></article>)}</div></section><footer><Brand/><p>Made with care for curious minds ♡</p></footer>{toast&&<div className="toast"><Icon name="check" size={17}/>{toast}</div>}</main>}
+function Home({ onLogin }) {
+  const [notice, setNotice] = useState('🌷 Our BEM grammar workshop is this Thursday. Bring your questions — we’ll make tricky tenses feel simple.');
+  const [lessons, setLessons] = useState([]);
+  const [toast, setToast] = useState('');
 
-function StudentPortal({onLogout}){const [toast,setToast]=useState('');const pop=m=>{setToast(m);setTimeout(()=>setToast(''),2500)};return <main className="student-page"><aside className="student-sidebar"><Brand/><div className="student-profile"><span>SA</span><div><b>Salma Amrane</b><small>BAC 2026 student</small></div></div><div className="side-menu"><a className="side-active">My space</a><a>My lessons</a><a>Live sessions</a><a>My assessments</a></div><button className="logout" onClick={onLogout}>← Log out</button></aside><section className="student-main"><header className="student-header"><div><p className="eyebrow"><span/> STUDENT PORTAL</p><h1>Hello, <i>Salma</i> ✦</h1><p>Your next small step is waiting for you.</p></div><div className="progress-ring"><b>68%</b><span>this week</span></div></header><section className="student-live"><div><p className="eyebrow"><span/> NEXT LIVE CLASS</p><h2>Writing a perfect <i>essay introduction</i></h2><p>Friday, 18 July · 5:00 PM · 60 minutes</p><button onClick={()=>pop('Your Google Meet session opens 10 minutes before class.')} className="join">Join live session <Icon name="arrow" size={16}/></button></div><div className="live-date"><b>18</b><span>JULY</span><small>FRI</small></div></section><div className="student-grid"><article className="student-announcement"><p className="eyebrow"><span/> FROM CHAHEED</p><h2>🌷 A little reminder, lovely learners!</h2><p>Our BEM grammar workshop is this Thursday. Bring your questions — we’ll make tricky tenses feel simple.</p><small>Posted today at 9:30 AM</small></article><article className="work-card"><p className="eyebrow"><span/> WORK TO SUBMIT</p><div className="work-top"><div className="paper">A<small>+</small></div><div><h2>Assessment #3</h2><p>Reading comprehension</p></div></div><p className="due">Due in <b>2 days, 4 hours</b></p><button onClick={()=>pop('Submission area opened. Choose your completed file to upload.')} className="submit-work">Submit my work <Icon name="arrow" size={16}/></button></article></div><section className="continue-section"><div className="panel-title"><div><p className="eyebrow"><span/> CONTINUE LEARNING</p><h2>Pick up where you <i>left off</i></h2></div><button onClick={()=>pop('Your full lesson library is ready.')} className="view-all">View all lessons <Icon name="arrow" size={15}/></button></div><div className="student-lesson-row"><div className="tiny-cover">Aa</div><div><b>Expressing opinions like a native</b><p>BAC · Vocabulary · 12 min video</p><div className="progress-bar"><span/></div></div><button onClick={()=>pop('Opening your lesson…')}><Icon name="play" size={17}/></button></div></section></section>{toast&&<div className="toast"><Icon name="check" size={17}/>{toast}</div>}</main>}
+  const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
+
+  useEffect(() => {
+    supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
+      if (data?.content) setNotice(data.content);
+    });
+    supabase.from('lessons').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      if (data) setLessons(data);
+    });
+  }, []);
+
+  return (
+    <main>
+      <nav>
+        <Brand />
+        <div className="navlinks">
+          <a>Home</a>
+          <a href="#lessons">Lessons</a>
+          <a href="#sessions">Live sessions</a>
+        </div>
+        <button className="sign-in" onClick={() => onLogin('student', '')}>Student sign in <Icon name="arrow" size={16} /></button>
+      </nav>
+      <section className="hero">
+        <div className="hero-copy">
+          <p className="eyebrow"><span /> YOUR ENGLISH JOURNEY STARTS HERE</p>
+          <div className="doodle-arrow">dream big ↗</div>
+          <h1>Speak it.<br /><i>Own</i> it. <span>☆</span></h1>
+          <p className="type-line">Let’s make English feel <TextType text={['easy & exciting.', 'confident & clear.', 'uniquely yours.']} textColors={['#cf6285', '#7654bb', '#e27855']} /></p>
+          <p className="intro">A bright, supportive space for BEM & BAC students to learn, grow, and shine in English.</p>
+          <div className="hero-actions">
+            <button className="primary" onClick={() => onLogin('student', '')}>Enter student space <Icon name="arrow" /></button>
+            <button className="textbutton" onClick={() => onLogin('teacher', '')}>I’m a teacher</button>
+          </div>
+        </div>
+        <div className="hero-art">
+          <div className="blob pink" />
+          <div className="blob lavender" />
+          <div className="sticker sticker-heart">♡</div>
+          <div className="sticker sticker-star">✦</div>
+          <div className="english-card">
+            <div className="card-top"><span>ENGLISH CLASS</span><span>♡</span></div>
+            <h3>Future<br /><i>fluent</i><br />speaker.</h3>
+            <div className="girl">
+              <div className="hair" />
+              <div className="face">• ◡ •</div>
+              <div className="body" />
+            </div>
+            <p>one lesson at a time</p>
+          </div>
+          <div className="floating-note"><span>✦</span><b>You’ve got this!</b></div>
+        </div>
+      </section>
+      <section className="dashboard" id="sessions">
+        <div className="dash-head">
+          <div>
+            <p className="eyebrow"><span /> A PEEK INSIDE</p>
+            <h2>Your learning <i>home</i></h2>
+          </div>
+        </div>
+        <div className="cards">
+          <article className="announce">
+            <div className="label"><span className="pinkdot" /> LATEST ANNOUNCEMENT</div>
+            <h3>{notice}</h3>
+            <small>Updated from database</small>
+          </article>
+          <article className="session">
+            <div className="label"><Icon name="calendar" size={15} /> NEXT LIVE SESSION</div>
+            <span className="level">BAC 2026</span>
+            <h3>Writing the perfect<br />essay introduction</h3>
+            <div className="session-time">
+              <div><b>18</b><span>JUL</span></div>
+              <p><b>Friday · 5:00 PM</b><br /><small>Google Meet · 60 minutes</small></p>
+            </div>
+            <button className="join" onClick={() => onLogin('student', '')}>Join session <Icon name="arrow" size={16} /></button>
+          </article>
+          <article className="assessment">
+            <div className="label"><span className="purple-dot" /> DUE SOON</div>
+            <div className="assess-title">
+              <div className="paper">A<small>+</small></div>
+              <div>
+                <h3>Assessment #3</h3>
+                <p>Reading comprehension</p>
+              </div>
+            </div>
+            <div className="deadline"><Icon name="clock" size={16} /><span>Due in <b>2 days, 4 hours</b></span></div>
+            <button className="submit" onClick={() => pop('Sign in to submit your work.')}>Submit my work <Icon name="arrow" size={16} /></button>
+          </article>
+        </div>
+      </section>
+      <section className="lessons" id="lessons">
+        <div className="lessons-title">
+          <p className="eyebrow"><span /> LEARN AT YOUR PACE</p>
+          <h2>Pick up where you <i>left off</i></h2>
+        </div>
+        <div className="lesson-grid">
+          {lessons.length === 0 ? (
+            <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#7c7379', fontStyle: 'italic' }}>No lessons have been added yet.</p>
+          ) : (
+            lessons.map((lesson, i) => {
+              const catClass = lesson.category.toLowerCase().includes('vocab') ? 'vocab' : lesson.category.toLowerCase().includes('gram') ? 'grammar' : 'writing';
+              const labelText = lesson.category.toLowerCase().includes('vocab') ? 'WORD POWER' : lesson.category.toLowerCase().includes('gram') ? 'GRAMMAR GLOW UP' : 'WRITE WITH ME';
+              const quoteText = lesson.category.toLowerCase().includes('vocab') ? 'say it loud' : lesson.category.toLowerCase().includes('gram') ? 'you got this' : 'your voice matters';
+              return (
+                <article key={lesson.id}>
+                  <div className={`lesson-image ${catClass}`}>
+                    <span>0{i + 1}</span>
+                    <b>{labelText}</b>
+                    <em>{quoteText}</em>
+                  </div>
+                  <p className="course">{lesson.level} · {lesson.category}</p>
+                  <h3>{lesson.title}</h3>
+                  <div className="lesson-foot">
+                    <span>{lesson.duration_minutes} min · Video lesson</span>
+                    <button onClick={() => onLogin('student', '')}><Icon name="play" size={16} /></button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+      <footer>
+        <Brand />
+        <p>Made with care for curious minds ♡</p>
+      </footer>
+      {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
+    </main>
+  );
+}
+
+function StudentPortal({ onLogout }) {
+  const [notice, setNotice] = useState('🌷 Our BEM grammar workshop is this Thursday. Bring your questions — we’ll make tricky tenses feel simple.');
+  const [lessons, setLessons] = useState([]);
+  const [toast, setToast] = useState('');
+
+  const pop = m => { setToast(m); setTimeout(() => setToast(''), 2500) };
+
+  useEffect(() => {
+    supabase.from('announcements').select('content').order('created_at', { ascending: false }).limit(1).maybeSingle().then(({ data }) => {
+      if (data?.content) setNotice(data.content);
+    });
+    supabase.from('lessons').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      if (data) setLessons(data);
+    });
+  }, []);
+
+  return (
+    <main className="student-page">
+      <aside className="student-sidebar">
+        <Brand />
+        <div className="student-profile">
+          <span>SA</span>
+          <div>
+            <b>Salma Amrane</b>
+            <small>BAC 2026 student</small>
+          </div>
+        </div>
+        <div className="side-menu">
+          <a className="side-active">My space</a>
+          <a>My lessons</a>
+          <a>Live sessions</a>
+          <a>My assessments</a>
+        </div>
+        <button className="logout" onClick={onLogout}>← Log out</button>
+      </aside>
+      <section className="student-main">
+        <header className="student-header">
+          <div>
+            <p className="eyebrow"><span /> STUDENT PORTAL</p>
+            <h1>Hello, <i>Salma</i> ✦</h1>
+            <p>Your next small step is waiting for you.</p>
+          </div>
+          <div className="progress-ring"><b>68%</b><span>this week</span></div>
+        </header>
+        <section className="student-live">
+          <div>
+            <p className="eyebrow"><span /> NEXT LIVE CLASS</p>
+            <h2>Writing a perfect <i>essay introduction</i></h2>
+            <p>Friday, 18 July · 5:00 PM · 60 minutes</p>
+            <button onClick={() => pop('Your Google Meet session opens 10 minutes before class.')} className="join">Join live session <Icon name="arrow" size={16} /></button>
+          </div>
+          <div className="live-date"><b>18</b><span>JULY</span><small>FRI</small></div>
+        </section>
+        <div className="student-grid">
+          <article className="student-announcement">
+            <p className="eyebrow"><span /> FROM CHAHEED</p>
+            <h2>{notice}</h2>
+            <small>Posted in database</small>
+          </article>
+          <article className="work-card">
+            <p className="eyebrow"><span /> WORK TO SUBMIT</p>
+            <div className="work-top">
+              <div className="paper">A<small>+</small></div>
+              <div>
+                <h2>Assessment #3</h2>
+                <p>Reading comprehension</p>
+              </div>
+            </div>
+            <p className="due">Due in <b>2 days, 4 hours</b></p>
+            <button onClick={() => pop('Submission area opened. Choose your completed file to upload.')} className="submit-work">Submit my work <Icon name="arrow" size={16} /></button>
+          </article>
+        </div>
+        <section className="continue-section">
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow"><span /> CONTINUE LEARNING</p>
+              <h2>Pick up where you <i>left off</i></h2>
+            </div>
+            <button onClick={() => pop('Your full lesson library is ready.')} className="view-all">View all lessons <Icon name="arrow" size={15}/></button>
+          </div>
+          {lessons.length === 0 ? (
+            <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '12px' }}>No lessons added yet.</p>
+          ) : (
+            lessons.slice(0, 3).map(lesson => (
+              <div className="student-lesson-row" key={lesson.id}>
+                <div className="tiny-cover">{lesson.category.substring(0, 2)}</div>
+                <div>
+                  <b>{lesson.title}</b>
+                  <p>{lesson.level} · {lesson.category} · {lesson.duration_minutes} min video</p>
+                  <div className="progress-bar"><span /></div>
+                </div>
+                <button onClick={() => pop('Opening your lesson…')}><Icon name="play" size={17} /></button>
+              </div>
+            ))
+          )}
+        </section>
+      </section>
+      {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
+    </main>
+  );
+}
 
 function RealLogin({ onBack, initialMode = 'signin', teacherEntry = false, onAuthenticated }) {
- const [mode,setMode]=useState(initialMode); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [name,setName]=useState(''); const [message,setMessage]=useState(''); const [busy,setBusy]=useState(false);
- const submit=async e=>{e.preventDefault();setBusy(true);setMessage('');let result;if(mode==='signup'){result=await supabase.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:'https://english-with-chahed.vercel.app'}});if(!result.error)setMessage('Account created. Check your email to confirm it, then sign in.')}else{result=await supabase.auth.signInWithPassword({email,password});if(!result.error)onAuthenticated(result.data.user)}setBusy(false);if(result.error)setMessage(result.error.message)};
- return <main className="login-page"><button className="back-home" onClick={onBack}>← Back to home</button><div className="login-art"><Brand/><span className="login-spark spark-one">✦</span><span className="login-spark spark-two">✧</span><span className="login-spark spark-three">★</span><div className="quote-mark">“</div><h1>Small steps.<br/><i>Brave</i> voices.</h1><p>A happy place to learn English, one confident sentence at a time.</p><div className="art-circle">ABC<br/><small>YOU CAN DO IT!</small></div></div><section className="login-card"><p className="eyebrow"><span/> {teacherEntry?'CHAHEED’S TEACHER SPACE':'STUDENT SPACE'}</p><h2>{mode==='signup'?<>Create your <i>account</i></>:<>Welcome <i>back</i></>}</h2><p className="login-sub">{teacherEntry?'Only Chaheed’s approved teacher email can access this portal.':'Sign in to access lessons, live sessions, and your submitted work.'}</p><form onSubmit={submit}>{mode==='signup'&&<label>Full name<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Your full name"/></label>}<label>Email address<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="hello@example.com"/></label><label>Password<input required minLength="6" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label>{message&&<p className="auth-message">{message}</p>}<button disabled={busy} className="login-submit">{busy?'Please wait…':mode==='signup'?'Create student account':'Sign in securely'} <Icon name="arrow"/></button></form>{!teacherEntry&&<p className="new-account">{mode==='signup'?'Already have an account? ':'New here? '}<a onClick={()=>{setMode(mode==='signup'?'signin':'signup');setMessage('')}}>{mode==='signup'?'Sign in':'Create a student account'}</a></p>}<small className="demo-note">Your login is protected by Supabase authentication.</small></section></main>
+  const [mode, setMode] = useState(initialMode);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async e => {
+    e.preventDefault();
+    setBusy(true);
+    setMessage('');
+    let result;
+    if (mode === 'signup') {
+      result = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: 'https://english-with-chahed.vercel.app'
+        }
+      });
+      if (!result.error) setMessage('Account created. Check your email to confirm it, then sign in.');
+    } else {
+      result = await supabase.auth.signInWithPassword({ email, password });
+      if (!result.error) onAuthenticated(result.data.user);
+    }
+    setBusy(false);
+    if (result.error) setMessage(result.error.message);
+  };
+
+  return (
+    <main className="login-page">
+      <button className="back-home" onClick={onBack}>← Back to home</button>
+      <div className="login-art">
+        <Brand />
+        <span className="login-spark spark-one">✦</span>
+        <span className="login-spark spark-two">✧</span>
+        <span className="login-spark spark-three">★</span>
+        <div className="quote-mark">“</div>
+        <h1>Small steps.<br /><i>Brave</i> voices.</h1>
+        <p>A happy place to learn English, one confident sentence at a time.</p>
+        <div className="art-circle">ABC<br /><small>YOU CAN DO IT!</small></div>
+      </div>
+      <section className="login-card">
+        <p className="eyebrow"><span /> {teacherEntry ? 'CHAHEED’S TEACHER SPACE' : 'STUDENT SPACE'}</p>
+        <h2>{mode === 'signup' ? <>Create your <i>account</i></> : <>Welcome <i>back</i></>}</h2>
+        <p className="login-sub">{teacherEntry ? 'Only Chaheed’s approved teacher email can access this portal.' : 'Sign in to access lessons, live sessions, and your submitted work.'}</p>
+        <form onSubmit={submit}>
+          {mode === 'signup' && <label>Full name<input required value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" /></label>}
+          <label>Email address<input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="hello@example.com" /></label>
+          <label>Password<input required minLength="6" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" /></label>
+          {message && <p className="auth-message">{message}</p>}
+          <button disabled={busy} className="login-submit">{busy ? 'Please wait…' : mode === 'signup' ? 'Create student account' : 'Sign in securely'} <Icon name="arrow" /></button>
+        </form>
+        {!teacherEntry && <p className="new-account">{mode === 'signup' ? 'Already have an account? ' : 'New here? '}<a onClick={() => { setMode(mode === 'signup' ? 'signin' : 'signup'); setMessage('') }}>{mode === 'signup' ? 'Sign in' : 'Create a student account'}</a></p>}
+        <small className="demo-note">Your login is protected by Supabase authentication.</small>
+      </section>
+    </main>
+  );
 }
 
-function App(){const [view,setView]=useState('home');const [loading,setLoading]=useState(true);const routeUser=async user=>{const {data}=await supabase.from('profiles').select('role').eq('id',user.id).maybeSingle();setView(data?.role==='teacher'?'teacher':'student')};useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{if(session)routeUser(session.user);setLoading(false)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{if(session)routeUser(session.user)});return()=>subscription.unsubscribe()},[]);const logout=async()=>{await supabase.auth.signOut();setView('home')};const login=r=>setView(r==='teacher'?'login-teacher':'login-student');if(loading)return <div className="app-loader">Loading English with Chaheed…</div>;return view==='login-teacher'?<RealLogin teacherEntry onAuthenticated={routeUser} onBack={()=>setView('home')}/>:view==='login-student'?<RealLogin onAuthenticated={routeUser} onBack={()=>setView('home')}/>:view==='teacher'?<TeacherDashboard onLogout={logout}/>:view==='student'?<StudentPortal onLogout={logout}/>:<Home onLogin={login}/>}
-createRoot(document.getElementById('root')).render(<App/>);
+function App() {
+  const [view, setView] = useState('home');
+  const [loading, setLoading] = useState(true);
+
+  const routeUser = async user => {
+    const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+    setView(data?.role === 'teacher' ? 'teacher' : 'student');
+  };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) routeUser(session.user);
+      setLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        routeUser(session.user);
+      } else {
+        setView('home');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setView('home');
+  };
+
+  const login = r => setView(r === 'teacher' ? 'login-teacher' : 'login-student');
+
+  if (loading) return <div className="app-loader">Loading English with Chaheed…</div>;
+
+  return view === 'login-teacher' ? (
+    <RealLogin teacherEntry onAuthenticated={routeUser} onBack={() => setView('home')} />
+  ) : view === 'login-student' ? (
+    <RealLogin onAuthenticated={routeUser} onBack={() => setView('home')} />
+  ) : view === 'teacher' ? (
+    <TeacherDashboard onLogout={logout} />
+  ) : view === 'student' ? (
+    <StudentPortal onLogout={logout} />
+  ) : (
+    <Home onLogin={login} />
+  );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
