@@ -26,6 +26,7 @@ function LessonModal({ isOpen, onClose, onSaved }) {
   const [level, setLevel] = useState('BAC');
   const [category, setCategory] = useState('VOCABULARY');
   const [duration, setDuration] = useState(15);
+  const [fileUrl, setFileUrl] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
@@ -37,13 +38,15 @@ function LessonModal({ isOpen, onClose, onSaved }) {
       title,
       level,
       category,
-      duration_minutes: parseInt(duration) || 10
+      duration_minutes: parseInt(duration) || 10,
+      file_url: fileUrl || null
     });
     setBusy(false);
     if (!error) {
       onSaved();
       onClose();
       setTitle('');
+      setFileUrl('');
     } else {
       alert(error.message);
     }
@@ -73,6 +76,9 @@ function LessonModal({ isOpen, onClose, onSaved }) {
           </label>
           <label>Duration (Minutes)
             <input type="number" required value={duration} onChange={e => setDuration(e.target.value)} min="1"/>
+          </label>
+          <label>Materials Link (PDF, Slides, Drive, Video link)
+            <input type="url" value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://drive.google.com/..."/>
           </label>
           <div className="modal-buttons">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
@@ -145,15 +151,78 @@ function SessionModal({ isOpen, onClose, onSaved }) {
   );
 }
 
-function SubmissionModal({ isOpen, onClose, studentId, onSaved }) {
-  const [assessment, setAssessment] = useState('Assessment #3: Reading comprehension');
-  const [link, setLink] = useState('');
+function AssessmentModal({ isOpen, onClose, onSaved }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async e => {
     e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from('assessments').insert({
+      title,
+      description: description || null,
+      deadline: new Date(deadline).toISOString()
+    });
+    setBusy(false);
+    if (!error) {
+      onSaved();
+      onClose();
+      setTitle('');
+      setDescription('');
+      setDeadline('');
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Create <i>Assessment</i></h2>
+        <p>Create a new assignment with a deadline for your students.</p>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>Assessment Title
+            <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Assessment #4: Vocabulary Review"/>
+          </label>
+          <label>Instructions/Description
+            <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Write a 150-word essay about opinion expressions"/>
+          </label>
+          <label>Deadline Date & Time
+            <input type="datetime-local" required value={deadline} onChange={e => setDeadline(e.target.value)}/>
+          </label>
+          <div className="modal-buttons">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Creating...' : 'Create Assessment'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SubmissionModal({ isOpen, onClose, studentId, assessments, onSaved }) {
+  const [assessment, setAssessment] = useState('');
+  const [link, setLink] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (assessments && assessments.length > 0) {
+      setAssessment(assessments[0].title);
+    }
+  }, [assessments]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!assessment) {
+      alert('No active assessment selected.');
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.from('submissions').insert({
       student_id: studentId,
@@ -179,9 +248,13 @@ function SubmissionModal({ isOpen, onClose, studentId, onSaved }) {
         <form className="modal-form" onSubmit={handleSubmit}>
           <label>Select Assessment
             <select value={assessment} onChange={e => setAssessment(e.target.value)}>
-              <option value="Assessment #1: Vocabulary quiz">Assessment #1: Vocabulary quiz</option>
-              <option value="Assessment #2: Grammar review">Assessment #2: Grammar review</option>
-              <option value="Assessment #3: Reading comprehension">Assessment #3: Reading comprehension</option>
+              {assessments.length === 0 ? (
+                <option disabled value="">No assessments available</option>
+              ) : (
+                assessments.map(ass => (
+                  <option key={ass.id} value={ass.title}>{ass.title}</option>
+                ))
+              )}
             </select>
           </label>
           <label>Link to your work (Google Drive, PDF link, etc.)
@@ -189,7 +262,7 @@ function SubmissionModal({ isOpen, onClose, studentId, onSaved }) {
           </label>
           <div className="modal-buttons">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
-            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Submitting...' : 'Submit Work'}</button>
+            <button type="submit" disabled={busy || assessments.length === 0} className="modal-btn-save">{busy ? 'Submitting...' : 'Submit Work'}</button>
           </div>
         </form>
       </div>
@@ -249,6 +322,50 @@ function GradeModal({ isOpen, onClose, submission, onSaved }) {
   );
 }
 
+function EditStudentModal({ isOpen, onClose, student, onSaved }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (student) setName(student.full_name || '');
+  }, [student]);
+
+  if (!isOpen || !student) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.from('profiles').update({
+      full_name: name
+    }).eq('id', student.id);
+    setBusy(false);
+    if (!error) {
+      onSaved();
+      onClose();
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Edit Student <i>Name</i></h2>
+        <p>Update full name for the student profile.</p>
+        <form className="modal-form" onSubmit={handleSubmit}>
+          <label>Full Name
+            <input required value={name} onChange={e => setName(e.target.value)}/>
+          </label>
+          <div className="modal-buttons">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TeacherDashboard({ onLogout }) {
   const [notice, setNotice] = useState('No announcements published yet.');
   const [draft, setDraft] = useState('');
@@ -256,11 +373,16 @@ function TeacherDashboard({ onLogout }) {
   const [lessons, setLessons] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [assessments, setAssessments] = useState([]);
   const [studentCount, setStudentCount] = useState(0);
   const [toGradeCount, setToGradeCount] = useState(0);
+  
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -289,6 +411,12 @@ function TeacherDashboard({ onLogout }) {
 
     const { data: subData } = await supabase.from('submissions').select('*, profiles(full_name)').order('submitted_at', { ascending: false });
     if (subData) setSubmissions(subData);
+
+    const { data: studentList } = await supabase.from('profiles').select('*').eq('role', 'student').order('created_at', { ascending: false });
+    if (studentList) setStudents(studentList);
+
+    const { data: assData } = await supabase.from('assessments').select('*').order('created_at', { ascending: false });
+    if (assData) setAssessments(assData);
   };
 
   useEffect(() => {
@@ -311,6 +439,30 @@ function TeacherDashboard({ onLogout }) {
     }
   };
 
+  const handleRemoveStudent = async studentId => {
+    if (confirm('Are you sure you want to remove this student? This will delete their profile record.')) {
+      const { error } = await supabase.from('profiles').delete().eq('id', studentId);
+      if (!error) {
+        pop('Student removed.');
+        loadDashboardData();
+      } else {
+        alert(error.message);
+      }
+    }
+  };
+
+  const handleDeleteAssessment = async assessmentId => {
+    if (confirm('Are you sure you want to delete this assessment? All associated submissions will also be deleted.')) {
+      const { error } = await supabase.from('assessments').delete().eq('id', assessmentId);
+      if (!error) {
+        pop('Assessment deleted.');
+        loadDashboardData();
+      } else {
+        alert(error.message);
+      }
+    }
+  };
+
   return (
     <main className="teacher-page">
       <aside className="teacher-sidebar">
@@ -326,6 +478,7 @@ function TeacherDashboard({ onLogout }) {
           <a className={activeTab === 'overview' ? 'side-active' : ''} onClick={() => handleNav('overview', 'overview')}>Overview</a>
           <a className={activeTab === 'lessons' ? 'side-active' : ''} onClick={() => handleNav('lessons', 'lessons')}>My lessons</a>
           <a className={activeTab === 'live' ? 'side-active' : ''} onClick={() => handleNav('live', 'live')}>Live sessions</a>
+          <a className={activeTab === 'students' ? 'side-active' : ''} onClick={() => handleNav('students', 'students')}>Students</a>
           <a className={activeTab === 'submissions' ? 'side-active' : ''} onClick={() => handleNav('submissions', 'submissions')}>Assessments</a>
         </div>
         <button className="logout" onClick={onLogout}>← Log out</button>
@@ -419,10 +572,71 @@ function TeacherDashboard({ onLogout }) {
             )}
           </article>
         </div>
-        <section className="submissions" id="submissions">
+
+        <section className="submissions" id="students" style={{ marginTop: '16px' }}>
           <div className="panel-title">
             <div>
-              <p className="eyebrow"><span /> ASSESSMENTS</p>
+              <p className="eyebrow"><span /> MEMBERS</p>
+              <h2>Manage <i>students</i></h2>
+            </div>
+            <button onClick={() => {
+              const inviteLink = window.location.origin;
+              navigator.clipboard.writeText(inviteLink);
+              pop('Share link copied to clipboard!');
+            }} className="create-btn" style={{ padding: '8px 12px', fontSize: '10px' }}>
+              + Invite student
+            </button>
+          </div>
+          {students.length === 0 ? (
+            <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '11px' }}>No students registered yet.</p>
+          ) : (
+            students.map(st => (
+              <div className="student-row" key={st.id} style={{ gridTemplateColumns: '36px 2fr 1fr auto' }}>
+                <span className="student-avatar">{st.full_name?.substring(0, 2).toUpperCase() || 'ST'}</span>
+                <b>{st.full_name || 'Anonymous Student'}</b>
+                <small>Joined {new Date(st.created_at).toLocaleDateString()}</small>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setEditingStudent(st)} style={{ background: '#f0ebfb', color: '#725a98' }}>Edit</button>
+                  <button onClick={() => handleRemoveStudent(st.id)} style={{ background: '#fff0f2', color: '#ce6887' }}>Remove</button>
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section className="submissions" id="submissions" style={{ marginTop: '16px' }}>
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow"><span /> ASSIGNMENTS</p>
+              <h2>Active <i>assessments</i></h2>
+            </div>
+            <button onClick={() => setShowAssessmentModal(true)} className="create-btn" style={{ padding: '8px 12px', fontSize: '10px' }}>
+              + Create assessment
+            </button>
+          </div>
+          {assessments.length === 0 ? (
+            <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '11px' }}>No assessments created yet.</p>
+          ) : (
+            assessments.map(ass => (
+              <div className="student-row" key={ass.id} style={{ gridTemplateColumns: '36px 2.5fr 2fr auto' }}>
+                <div className="paper" style={{ width: '32px', height: '36px', padding: '6px', fontSize: '14px' }}>A</div>
+                <div>
+                  <b>{ass.title}</b>
+                  <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#7c7379' }}>{ass.description || 'No description'}</p>
+                </div>
+                <small style={{ color: new Date(ass.deadline) < new Date() ? '#ce6887' : '#78a080', fontWeight: '600' }}>
+                  Deadline: {new Date(ass.deadline).toLocaleString()}
+                </small>
+                <button onClick={() => handleDeleteAssessment(ass.id)} style={{ background: '#fff0f2', color: '#ce6887' }}>Delete</button>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section className="submissions" style={{ marginTop: '16px' }}>
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow"><span /> SUBMISSIONS</p>
               <h2>Latest <i>submissions</i></h2>
             </div>
           </div>
@@ -447,7 +661,9 @@ function TeacherDashboard({ onLogout }) {
       </section>
       <LessonModal isOpen={showLessonModal} onClose={() => setShowLessonModal(false)} onSaved={loadDashboardData} />
       <SessionModal isOpen={showSessionModal} onClose={() => setShowSessionModal(false)} onSaved={loadDashboardData} />
+      <AssessmentModal isOpen={showAssessmentModal} onClose={() => setShowAssessmentModal(false)} onSaved={loadDashboardData} />
       <GradeModal isOpen={!!activeSubmission} onClose={() => setActiveSubmission(null)} submission={activeSubmission} onSaved={loadDashboardData} />
+      <EditStudentModal isOpen={!!editingStudent} onClose={() => setEditingStudent(null)} student={editingStudent} onSaved={loadDashboardData} />
       {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
     </main>
   );
@@ -587,7 +803,12 @@ function Home({ onLogin }) {
                   <h3>{lesson.title}</h3>
                   <div className="lesson-foot">
                     <span>{lesson.duration_minutes} min · Video lesson</span>
-                    <button onClick={() => onLogin('student', '')}><Icon name="play" size={16} /></button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {lesson.file_url && (
+                        <a href={lesson.file_url} target="_blank" rel="noopener noreferrer" style={{ background: '#ece7f8', color: '#7660a2', borderRadius: '50%', width: '29px', height: '29px', display: 'grid', placeItems: 'center', fontSize: '12px', textDecoration: 'none' }}>📎</a>
+                      )}
+                      <button onClick={() => onLogin('student', '')}><Icon name="play" size={16} /></button>
+                    </div>
                   </div>
                 </article>
               );
@@ -609,6 +830,8 @@ function StudentPortal({ onLogout, user, profile }) {
   const [lessons, setLessons] = useState([]);
   const [nextSession, setNextSession] = useState(null);
   const [submissions, setSubmissions] = useState([]);
+  const [assessments, setAssessments] = useState([]);
+  const [nextAssessment, setNextAssessment] = useState(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [toast, setToast] = useState('');
   const [activeTab, setActiveTab] = useState('space');
@@ -629,6 +852,12 @@ function StudentPortal({ onLogout, user, profile }) {
 
     const { data: sessData } = await supabase.from('sessions').select('*').gte('session_date', new Date().toISOString()).order('session_date', { ascending: true }).limit(1).maybeSingle();
     if (sessData) setNextSession(sessData);
+
+    const { data: assList } = await supabase.from('assessments').select('*').order('created_at', { ascending: false });
+    if (assList) setAssessments(assList);
+
+    const { data: nextAss } = await supabase.from('assessments').select('*').gte('deadline', new Date().toISOString()).order('deadline', { ascending: true }).limit(1).maybeSingle();
+    if (nextAss) setNextAssessment(nextAss);
 
     if (user) {
       const { data: subData } = await supabase.from('submissions').select('*').eq('student_id', user.id).order('submitted_at', { ascending: false });
@@ -701,15 +930,32 @@ function StudentPortal({ onLogout, user, profile }) {
           </article>
           <article className="work-card">
             <p className="eyebrow"><span /> WORK TO SUBMIT</p>
-            <div className="work-top">
-              <div className="paper">A<small>+</small></div>
-              <div>
-                <h2>Submit Assessments</h2>
-                <p>Send links to your completed assignments.</p>
-              </div>
-            </div>
-            <p className="due">Click below to upload a new homework file.</p>
-            <button onClick={() => setShowSubmitModal(true)} className="submit-work">Submit my work <Icon name="arrow" size={16} /></button>
+            {nextAssessment ? (
+              <>
+                <div className="work-top">
+                  <div className="paper">A<small>+</small></div>
+                  <div>
+                    <h2>{nextAssessment.title}</h2>
+                    <p>{nextAssessment.description || 'Instructions inside modal'}</p>
+                  </div>
+                </div>
+                <p className="due" style={{ color: '#ad5974', fontWeight: '600' }}>
+                  Due by: {new Date(nextAssessment.deadline).toLocaleString()}
+                </p>
+                <button onClick={() => setShowSubmitModal(true)} className="submit-work">Submit my work <Icon name="arrow" size={16}/></button>
+              </>
+            ) : (
+              <>
+                <div className="work-top">
+                  <div className="paper">A<small>+</small></div>
+                  <div>
+                    <h2>No active assessments</h2>
+                    <p>You are all caught up! Good job.</p>
+                  </div>
+                </div>
+                <p className="due">Enjoy your day!</p>
+              </>
+            )}
           </article>
         </div>
         <section className="continue-section" style={{ marginTop: '16px' }}>
@@ -724,7 +970,7 @@ function StudentPortal({ onLogout, user, profile }) {
           ) : (
             submissions.map(sub => (
               <div className="student-lesson-row" key={sub.id} style={{ borderTop: '1px solid #f0eae6', marginTop: '15px', paddingTop: '12px' }}>
-                <div className="tiny-cover" style={{ background: sub.status === 'Graded' ? '#eafbe9' : '#fff0f2', color: sub.status === 'Graded' ? '#4da64d' : '#ce6887', display: 'grid', placeItems: 'center', fontStyle: 'italic' }}>
+                <div className="tiny-cover" style={{ background: sub.status === 'Graded' ? '#eafbe9' : '#fff0f2', color: sub.status === 'Graded' ? '#4da64d' : '#ce6887', display: 'grid', placeItems: 'center', fontWeight: '700' }}>
                   {sub.status === 'Graded' ? sub.grade : '...'}
                 </div>
                 <div>
@@ -755,13 +1001,18 @@ function StudentPortal({ onLogout, user, profile }) {
                   <p>{lesson.level} · {lesson.category} · {lesson.duration_minutes} min video</p>
                   <div className="progress-bar"><span /></div>
                 </div>
-                <button onClick={() => pop('Opening your lesson…')}><Icon name="play" size={17} /></button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {lesson.file_url && (
+                    <a href={lesson.file_url} target="_blank" rel="noopener noreferrer" style={{ background: '#f4edff', color: '#765c98', padding: '6px 10px', borderRadius: '3px', fontSize: '10px', fontWeight: '600', textDecoration: 'none' }}>Materials 📎</a>
+                  )}
+                  <button onClick={() => pop('Opening your lesson…')}><Icon name="play" size={17} /></button>
+                </div>
               </div>
             ))
           )}
         </section>
       </section>
-      <SubmissionModal isOpen={showSubmitModal} onClose={() => setShowSubmitModal(false)} studentId={user?.id} onSaved={loadStudentData} />
+      <SubmissionModal isOpen={showSubmitModal} onClose={() => setShowSubmitModal(false)} studentId={user?.id} assessments={assessments} onSaved={loadStudentData} />
       {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
     </main>
   );
