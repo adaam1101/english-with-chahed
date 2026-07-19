@@ -164,6 +164,29 @@ function AttachmentSelector({ value, onChange }) {
   );
 }
 
+const COURSE_DETAILS = {
+  'English A1': {
+    sessions: '2 sessions per week',
+    duration: '2 months',
+    price: '5000 DA'
+  },
+  'English A2': {
+    sessions: '2 sessions per week',
+    duration: '2 months',
+    price: '5000 DA'
+  },
+  'English for BAC students': {
+    sessions: '5 sessions per month',
+    duration: 'Monthly subscription',
+    price: '2000 DA'
+  },
+  'English for BEM students': {
+    sessions: '5 sessions per month',
+    duration: 'Monthly subscription',
+    price: '2000 DA'
+  }
+};
+
 function EnrollPage({ onBack }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -198,6 +221,8 @@ function EnrollPage({ onBack }) {
       alert(error.message);
     }
   };
+
+  const details = COURSE_DETAILS[course] || COURSE_DETAILS['English A1'];
 
   return (
     <div className="enroll-page-container">
@@ -287,6 +312,29 @@ function EnrollPage({ onBack }) {
                 </select>
               </div>
 
+              <div style={{
+                background: '#fcfaf7',
+                border: '1.5px dashed #ebdcd3',
+                borderRadius: '8px',
+                padding: '16px',
+                marginTop: '16px',
+                boxShadow: '0 4px 12px rgba(22, 34, 56, 0.02)'
+              }}>
+                <p style={{ margin: '0 0 8px', fontSize: '9px', fontWeight: '700', color: '#ab9dac', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course Inclusions & Fees</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#162238', fontWeight: '600' }}>
+                  <span>⏳ Duration:</span>
+                  <span style={{ color: '#554a56' }}>{details.duration}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#162238', fontWeight: '600', marginTop: '6px' }}>
+                  <span>📅 Sessions:</span>
+                  <span style={{ color: '#554a56' }}>{details.sessions}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#725a98', fontWeight: '700', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f0e6e0' }}>
+                  <span>💵 Total Cost:</span>
+                  <span style={{ fontSize: '15px', color: '#725a98' }}>{details.price}</span>
+                </div>
+              </div>
+
               <button type="submit" disabled={busy} className="enroll-submit-btn">
                 {busy ? 'Submitting Application...' : 'Confirm Registration'} <Icon name="arrow" size={16} />
               </button>
@@ -297,6 +345,7 @@ function EnrollPage({ onBack }) {
     </div>
   );
 }
+
 
 
 function LessonModal({ isOpen, onClose, onSaved }) {
