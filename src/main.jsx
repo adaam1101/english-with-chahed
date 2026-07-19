@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import TextType from './TextType';
 import { supabase } from './supabase';
 import './styles.css';
+import logoImg from './logo.jpg';
+
 
 const Icon = ({ name, size = 18 }) => {
   const paths = { 
@@ -162,7 +164,7 @@ function AttachmentSelector({ value, onChange }) {
   );
 }
 
-function EnrollModal({ isOpen, onClose }) {
+function EnrollPage({ onBack }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [age, setAge] = useState('');
@@ -171,8 +173,6 @@ function EnrollModal({ isOpen, onClose }) {
   const [course, setCourse] = useState('English A1');
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -200,54 +200,104 @@ function EnrollModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <h2>Enroll in a <i>Course</i> ✦</h2>
-        <p>Fill out this quick form to register for our upcoming sessions.</p>
-        {success ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <span style={{ fontSize: '48px' }}>🎉</span>
-            <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '22px', marginTop: '12px' }}>Registration Successful!</h3>
-            <p style={{ fontSize: '13px', color: '#7c7379', marginTop: '8px' }}>Teacher Chaheed will review your details and contact you via phone soon.</p>
-            <button onClick={() => { setSuccess(false); onClose(); }} className="modal-btn-save" style={{ margin: '15px auto 0', display: 'block' }}>Close</button>
+    <div className="enroll-page-container">
+      <header className="enroll-nav">
+        <button className="back-home" onClick={onBack}>← Back to home</button>
+        <div className="enroll-nav-logo">
+          <img src={logoImg} alt="English with Chahd Logo" className="enroll-mini-logo" />
+          <span>English with Chahd</span>
+        </div>
+      </header>
+
+      <div className="enroll-grid">
+        <div className="enroll-hero-section">
+          <div className="logo-glow-wrapper">
+            <img src={logoImg} alt="English with Chahd Logo" className="enroll-main-logo" />
+            <div className="logo-sparkle">✦</div>
+            <div className="logo-sparkle-two">✧</div>
           </div>
-        ) : (
-          <form className="modal-form" onSubmit={handleSubmit}>
-            <label>Full Name
-              <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Adam Ameyoud"/>
-            </label>
-            <label>Phone Number
-              <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 0555 12 34 56"/>
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '12px' }}>
-              <label>Age
-                <input required type="number" value={age} onChange={e => setAge(e.target.value)} min="1" max="100"/>
-              </label>
-              <label>Date of Birth
-                <input required type="date" value={dob} onChange={e => setDob(e.target.value)}/>
-              </label>
+          <h1>Join our <i>english</i> family</h1>
+          <p>Register today to reserve your seat in our interactive classrooms for BAC, BEM, or General Level courses.</p>
+          <div className="enroll-benefits">
+            <div className="benefit-item">
+              <span className="benefit-dot">✦</span>
+              <div>
+                <b>Certified Instruction</b>
+                <small>Curated study materials, live speaking sessions, and mock exams.</small>
+              </div>
             </div>
-            <label>Email Address (Optional)
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com"/>
-            </label>
-            <label>Select Course
-              <select value={course} onChange={e => setCourse(e.target.value)}>
-                <option value="English A1">English A1</option>
-                <option value="English A2">English A2</option>
-                <option value="English for BAC students">English for BAC students</option>
-                <option value="English for BEM students">English for BEM students</option>
-              </select>
-            </label>
-            <div className="modal-buttons">
-              <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
-              <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Registering...' : 'Register Now'}</button>
+            <div className="benefit-item">
+              <span className="benefit-dot">✦</span>
+              <div>
+                <b>BEM & BAC Focus</b>
+                <small>Specialized curriculum aligned with Algerian school programs.</small>
+              </div>
             </div>
-          </form>
-        )}
+          </div>
+        </div>
+
+        <div className="enroll-form-card">
+          {success ? (
+            <div className="enroll-success-state">
+              <span className="success-emoji">🎉</span>
+              <h2>Registration Received!</h2>
+              <p>Thank you for registering. Teacher Chahd will review your details and call you shortly to confirm your seat.</p>
+              <button className="primary" onClick={onBack} style={{ marginTop: '20px' }}>Return Home</button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="enroll-main-form">
+              <div className="form-header">
+                <h2>Inscription Form</h2>
+                <p>Complete your registration details below.</p>
+              </div>
+
+              <div className="form-group">
+                <label>Full Name</label>
+                <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Adam Ameyoud" />
+              </div>
+
+              <div className="form-group">
+                <label>Phone Number (for confirmation)</label>
+                <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 0555 12 34 56" />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Age</label>
+                  <input required type="number" value={age} onChange={e => setAge(e.target.value)} min="1" max="100" placeholder="18" />
+                </div>
+                <div className="form-group">
+                  <label>Date of Birth</label>
+                  <input required type="date" value={dob} onChange={e => setDob(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Email Address (Optional)</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" />
+              </div>
+
+              <div className="form-group">
+                <label>Select Course Level</label>
+                <select value={course} onChange={e => setCourse(e.target.value)}>
+                  <option value="English A1">English A1 (Beginner)</option>
+                  <option value="English A2">English A2 (Elementary)</option>
+                  <option value="English for BAC students">English for BAC students</option>
+                  <option value="English for BEM students">English for BEM students</option>
+                </select>
+              </div>
+
+              <button type="submit" disabled={busy} className="enroll-submit-btn">
+                {busy ? 'Submitting Application...' : 'Confirm Registration'} <Icon name="arrow" size={16} />
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
 
 function LessonModal({ isOpen, onClose, onSaved }) {
   const [title, setTitle] = useState('');
@@ -1024,12 +1074,11 @@ function TeacherDashboard({ onLogout }) {
   );
 }
 
-function Home({ onLogin }) {
+function Home({ onLogin, onEnroll }) {
   const [notice, setNotice] = useState('🌷 Welcome back! Check back later for the latest announcement.');
   const [lessons, setLessons] = useState([]);
   const [nextSession, setNextSession] = useState(null);
   const [toast, setToast] = useState('');
-  const [showEnrollModal, setShowEnrollModal] = useState(false);
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
 
@@ -1053,7 +1102,7 @@ function Home({ onLogin }) {
           <a>Home</a>
           <a href="#lessons">Lessons</a>
           <a href="#sessions">Live sessions</a>
-          <a onClick={() => setShowEnrollModal(true)} style={{ fontWeight: '700', color: '#c76286', cursor: 'pointer' }}>Enroll Now ✦</a>
+          <a onClick={onEnroll} style={{ fontWeight: '700', color: '#c76286', cursor: 'pointer' }}>Enroll Now ✦</a>
         </div>
         <button className="sign-in" onClick={() => onLogin('student', '')}>Student sign in <Icon name="arrow" size={16} /></button>
       </nav>
@@ -1066,10 +1115,11 @@ function Home({ onLogin }) {
           <p className="intro">A bright, supportive space for BEM & BAC students to learn, grow, and shine in English.</p>
           <div className="hero-actions">
             <button className="primary" onClick={() => onLogin('student', '')}>Enter student space <Icon name="arrow" /></button>
-            <button className="primary" style={{ background: '#7e639f' }} onClick={() => setShowEnrollModal(true)}>Enroll in a course <Icon name="plus" /></button>
+            <button className="primary" style={{ background: '#7e639f' }} onClick={onEnroll}>Enroll in a course <Icon name="plus" /></button>
             <button className="textbutton" onClick={() => onLogin('teacher', '')}>I’m a teacher</button>
           </div>
         </div>
+
         <div className="hero-art">
           <div className="blob pink" />
           <div className="blob lavender" />
@@ -1178,7 +1228,6 @@ function Home({ onLogin }) {
         <Brand />
         <p>Made with care for curious minds ♡</p>
       </footer>
-      <EnrollModal isOpen={showEnrollModal} onClose={() => setShowEnrollModal(false)} />
       {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
     </main>
   );
@@ -1556,12 +1605,14 @@ function App() {
     <RealLogin teacherEntry onAuthenticated={routeUser} onBack={() => setView('home')} />
   ) : view === 'login-student' ? (
     <RealLogin onAuthenticated={routeUser} onBack={() => setView('home')} />
+  ) : view === 'enroll' ? (
+    <EnrollPage onBack={() => setView('home')} />
   ) : view === 'teacher' ? (
     <TeacherDashboard onLogout={logout} />
   ) : view === 'student' ? (
     <StudentPortal onLogout={logout} user={user} profile={profile} />
   ) : (
-    <Home onLogin={login} />
+    <Home onLogin={login} onEnroll={() => setView('enroll')} />
   );
 }
 
