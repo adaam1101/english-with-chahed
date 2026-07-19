@@ -162,6 +162,93 @@ function AttachmentSelector({ value, onChange }) {
   );
 }
 
+function EnrollModal({ isOpen, onClose }) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [age, setAge] = useState('');
+  const [dob, setDob] = useState('');
+  const [email, setEmail] = useState('');
+  const [course, setCourse] = useState('English A1');
+  const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!checkRateLimit('enroll', 8)) return;
+    setBusy(true);
+    const { error } = await supabase.from('enrollments').insert({
+      full_name: name,
+      phone_number: phone,
+      age: parseInt(age) || 0,
+      date_of_birth: dob,
+      email: email || null,
+      course
+    });
+    setBusy(false);
+    if (!error) {
+      setSuccess(true);
+      setName('');
+      setPhone('');
+      setAge('');
+      setDob('');
+      setEmail('');
+    } else {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <h2>Enroll in a <i>Course</i> ✦</h2>
+        <p>Fill out this quick form to register for our upcoming sessions.</p>
+        {success ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <span style={{ fontSize: '48px' }}>🎉</span>
+            <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '22px', marginTop: '12px' }}>Registration Successful!</h3>
+            <p style={{ fontSize: '13px', color: '#7c7379', marginTop: '8px' }}>Teacher Chaheed will review your details and contact you via phone soon.</p>
+            <button onClick={() => { setSuccess(false); onClose(); }} className="modal-btn-save" style={{ margin: '15px auto 0', display: 'block' }}>Close</button>
+          </div>
+        ) : (
+          <form className="modal-form" onSubmit={handleSubmit}>
+            <label>Full Name
+              <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Adam Ameyoud"/>
+            </label>
+            <label>Phone Number
+              <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 0555 12 34 56"/>
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '12px' }}>
+              <label>Age
+                <input required type="number" value={age} onChange={e => setAge(e.target.value)} min="1" max="100"/>
+              </label>
+              <label>Date of Birth
+                <input required type="date" value={dob} onChange={e => setDob(e.target.value)}/>
+              </label>
+            </div>
+            <label>Email Address (Optional)
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com"/>
+            </label>
+            <label>Select Course
+              <select value={course} onChange={e => setCourse(e.target.value)}>
+                <option value="English A1">English A1</option>
+                <option value="English A2">English A2</option>
+                <option value="English for BAC students">English for BAC students</option>
+                <option value="English for BEM students">English for BEM students</option>
+              </select>
+            </label>
+            <div className="modal-buttons">
+              <button type="button" className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+              <button type="submit" disabled={busy} className="modal-btn-save">{busy ? 'Registering...' : 'Register Now'}</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LessonModal({ isOpen, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [level, setLevel] = useState('BAC');
@@ -550,6 +637,7 @@ function TeacherDashboard({ onLogout }) {
   const [submissions, setSubmissions] = useState([]);
   const [students, setStudents] = useState([]);
   const [assessments, setAssessments] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
   const [studentCount, setStudentCount] = useState(0);
   const [toGradeCount, setToGradeCount] = useState(0);
   
@@ -592,6 +680,9 @@ function TeacherDashboard({ onLogout }) {
 
     const { data: assData } = await supabase.from('assessments').select('*').order('created_at', { ascending: false });
     if (assData) setAssessments(assData);
+
+    const { data: enrollList } = await supabase.from('enrollments').select('*').order('created_at', { ascending: false });
+    if (enrollList) setEnrollments(enrollList);
   };
 
   useEffect(() => {
@@ -639,6 +730,28 @@ function TeacherDashboard({ onLogout }) {
     }
   };
 
+  const handleUpdateEnrollStatus = async (id, newStatus) => {
+    const { error } = await supabase.from('enrollments').update({ status: newStatus }).eq('id', id);
+    if (!error) {
+      pop(`Enrollment status updated to ${newStatus}.`);
+      loadDashboardData();
+    } else {
+      alert(error.message);
+    }
+  };
+
+  const handleDeleteEnrollment = async id => {
+    if (confirm('Are you sure you want to delete this enrollment?')) {
+      const { error } = await supabase.from('enrollments').delete().eq('id', id);
+      if (!error) {
+        pop('Enrollment deleted.');
+        loadDashboardData();
+      } else {
+        alert(error.message);
+      }
+    }
+  };
+
   return (
     <main className="teacher-page">
       <aside className="teacher-sidebar">
@@ -655,6 +768,7 @@ function TeacherDashboard({ onLogout }) {
           <a className={activeTab === 'lessons' ? 'side-active' : ''} onClick={() => handleNav('lessons', 'lessons')}>My lessons</a>
           <a className={activeTab === 'live' ? 'side-active' : ''} onClick={() => handleNav('live', 'live')}>Live sessions</a>
           <a className={activeTab === 'students' ? 'side-active' : ''} onClick={() => handleNav('students', 'students')}>Students</a>
+          <a className={activeTab === 'enrollments' ? 'side-active' : ''} onClick={() => handleNav('enrollments', 'enrollments')}>Enrollments</a>
           <a className={activeTab === 'submissions' ? 'side-active' : ''} onClick={() => handleNav('submissions', 'submissions')}>Assessments</a>
         </div>
         <button className="logout" onClick={onLogout}>← Log out</button>
@@ -798,6 +912,53 @@ function TeacherDashboard({ onLogout }) {
           )}
         </section>
 
+        <section className="submissions" id="enrollments" style={{ marginTop: '16px' }}>
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow"><span /> REGISTRATIONS</p>
+              <h2>Course <i>enrollments</i></h2>
+            </div>
+          </div>
+          {enrollments.length === 0 ? (
+            <p style={{ padding: '20px 0', color: '#7c7379', fontStyle: 'italic', fontSize: '11px' }}>No enrollments received yet.</p>
+          ) : (
+            enrollments.map(en => {
+              const statusColor = en.status === 'Accepted' ? '#4da64d' : en.status === 'Called' ? '#e68212' : '#7c7379';
+              return (
+                <div className="student-row" key={en.id} style={{ gridTemplateColumns: '36px 2fr 2fr 1.5fr 1.5fr auto' }}>
+                  <span className="student-avatar" style={{ background: '#ded7f5', color: '#765c98' }}>EN</span>
+                  <div>
+                    <b>{en.full_name}</b>
+                    <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#7c7379' }}>Age: {en.age} · DOB: {new Date(en.date_of_birth).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <small style={{ color: '#7c7379' }}>Course</small>
+                    <p style={{ fontSize: '12px', fontWeight: '600', margin: '2px 0 0' }}>{en.course}</p>
+                  </div>
+                  <div>
+                    <small style={{ color: '#7c7379' }}>Contact Info</small>
+                    <p style={{ fontSize: '12px', fontWeight: '600', margin: '2px 0 0' }}>📞 {en.phone_number}</p>
+                    {en.email && <p style={{ fontSize: '10px', color: '#7c7379', margin: '2px 0 0' }}>✉️ {en.email}</p>}
+                  </div>
+                  <div>
+                    <small style={{ color: '#7c7379' }}>Status</small>
+                    <p style={{ fontSize: '11px', fontWeight: '700', margin: '2px 0 0', color: statusColor }}>{en.status}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {en.status === 'Pending' && (
+                      <button onClick={() => handleUpdateEnrollStatus(en.id, 'Called')} style={{ background: '#faf0e6', color: '#d8863b' }}>Mark Called</button>
+                    )}
+                    {en.status !== 'Accepted' && (
+                      <button onClick={() => handleUpdateEnrollStatus(en.id, 'Accepted')} style={{ background: '#eafbe9', color: '#4da64d' }}>Accept</button>
+                    )}
+                    <button onClick={() => handleDeleteEnrollment(en.id)} style={{ background: '#fff0f2', color: '#ce6887' }}>Delete</button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </section>
+
         <section className="submissions" id="submissions" style={{ marginTop: '16px' }}>
           <div className="panel-title">
             <div>
@@ -868,6 +1029,7 @@ function Home({ onLogin }) {
   const [lessons, setLessons] = useState([]);
   const [nextSession, setNextSession] = useState(null);
   const [toast, setToast] = useState('');
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
 
   const pop = m => { setToast(m); setTimeout(() => setToast(''), 2200) };
 
@@ -891,6 +1053,7 @@ function Home({ onLogin }) {
           <a>Home</a>
           <a href="#lessons">Lessons</a>
           <a href="#sessions">Live sessions</a>
+          <a onClick={() => setShowEnrollModal(true)} style={{ fontWeight: '700', color: '#c76286', cursor: 'pointer' }}>Enroll Now ✦</a>
         </div>
         <button className="sign-in" onClick={() => onLogin('student', '')}>Student sign in <Icon name="arrow" size={16} /></button>
       </nav>
@@ -903,6 +1066,7 @@ function Home({ onLogin }) {
           <p className="intro">A bright, supportive space for BEM & BAC students to learn, grow, and shine in English.</p>
           <div className="hero-actions">
             <button className="primary" onClick={() => onLogin('student', '')}>Enter student space <Icon name="arrow" /></button>
+            <button className="primary" style={{ background: '#7e639f' }} onClick={() => setShowEnrollModal(true)}>Enroll in a course <Icon name="plus" /></button>
             <button className="textbutton" onClick={() => onLogin('teacher', '')}>I’m a teacher</button>
           </div>
         </div>
@@ -1014,6 +1178,7 @@ function Home({ onLogin }) {
         <Brand />
         <p>Made with care for curious minds ♡</p>
       </footer>
+      <EnrollModal isOpen={showEnrollModal} onClose={() => setShowEnrollModal(false)} />
       {toast && <div className="toast"><Icon name="check" size={17} />{toast}</div>}
     </main>
   );
